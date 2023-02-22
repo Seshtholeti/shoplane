@@ -1,0 +1,285 @@
+#nav-div{
+    width: 100%;
+    box-shadow: 0 2px 5px #ccc;
+    background-color: white;
+    z-index: 10;
+    position: fixed;
+    top: 0;
+    left: 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    box-sizing: border-box;
+    padding: 16px 8%;
+}
+     
+
+#left-nav{
+    align-items: center;
+    display: flex;
+    justify-content: space-between;
+    width: 450px;
+    /* margin-bottom: 10px; */
+    
+     
+}
+#left-nav a{
+    text-decoration: none;
+    color: black;
+
+}
+#shop{
+    font-weight: bold;
+}
+#logo{
+    font-size: 30px;
+}
+ 
+
+#right-nav{
+      display:flex;
+      justify-content: space-between;
+
+      width: 80px;
+
+}
+
+#search{
+    display:flex;
+    width: 350px;
+    height: 35px;
+    background-color: rgb(245, 242, 242);
+    align-items: center;
+    position: relative;
+    /* margin-bottom: 10px; */
+}
+
+#search input{
+    width: 220px;
+    border: rgb(245, 242, 242);
+    background-color: rgb(245, 242, 242);
+    margin-left: 5px;
+    outline: none;
+
+}
+ #search i{
+    margin-left: 10px;   
+    /* margin-top: 5px; */
+    color: #999;
+    font-size:15px;
+}
+#cart{
+    /* display:inline-block; */
+    position:relative;
+    /* margin-bottom: 10px; */
+}
+#cart p{
+    position:absolute;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    color: white;
+    background-color: #009688;
+    bottom: 4px;
+    left: 15px;
+    font-size: 13px;
+    text-align: center;
+}
+
+#cart i{
+    font-size: 18px;
+    font-weight: bolder;
+}
+
+#user{
+    width: 50px;
+    height: 50px;
+    position: absolute;
+    right: 100px;
+    top: 8px;
+}
+
+#ed-logo{
+    width: 128px;
+    position: fixed;
+    bottom: 50px;
+    right: 50px;
+}
+footer{
+    width: 100%;
+    height: 300px;
+    background-color: #1c1b1e;
+    display: flex;
+    justify-content: space-around;
+    box-sizing: border-box;
+    padding: 4% 8%;
+    margin-top: 100px;
+
+}
+#ol-store {
+    color: white;
+     
+     
+}
+
+#ol-store a{
+    text-decoration: none;
+    color: white;
+    display: block;
+    margin-bottom: 15px;
+
+}
+#ol-store span{
+    text-decoration: none;
+    color: white;
+    display: block;
+    margin-bottom: 15px;
+
+}
+
+
+.sec{
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 15px;
+    display: flex;
+    flex-wrap: wrap;
+    margin-top: 50px;
+}
+
+.mainimg{
+    width : 100%;
+    margin-top: 50px;
+}
+
+.div1{
+     width : 35%;
+}
+
+.div2{
+
+    width: 50%;
+    /* margin-top: 40px; */
+    margin-left: 80px;
+    margin-top: 10px;
+}
+
+
+.imagesDiv{
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: left;
+}
+.images{
+    width : 85px;
+    
+    padding: 4px;
+    margin: 5px;
+    
+}
+
+
+
+.p1{
+    font-weight: bolder;
+    
+    letter-spacing: -2px;
+    margin-top: 40px;
+    margin-bottom: 0%;
+    color: rgb(27, 25, 25);
+}
+
+.p2{
+    font-weight: 200;
+    font-size: 20px;
+    letter-spacing: 1px;
+     
+}
+
+.p3{
+    font-weight: 200;
+    font-size: 20px;
+    letter-spacing: 1px;
+}
+
+.p4{
+    font-weight: 200;
+    font-size: 20px;
+    letter-spacing: 1px;
+}
+
+.p5{
+    font-size: 16px;
+    font-weight: 300;
+    color: #86939e;
+}
+
+.p6{
+    font-weight: 200;
+    font-size: 20px;
+    letter-spacing: 1px;
+}
+
+.btn{
+    font-size: 16px;
+    font-weight: bold;
+    color: #fff;
+    padding: 10px 20px;
+    letter-spacing: 2px;
+    background-color: #009688;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    box-shadow: 0 2px 10px rgb(0 0 0 / 50%);
+    margin-top: 40px;
+}
+
+.active{
+    border: 2px solid #009688;
+    border-radius: 6px;
+}
+
+.btn:hover{
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.808);
+}
+
+.number{
+    color:#009688;
+    font-weight: bold;
+}
+#profile{
+    font-size: 40px;
+    margin-left: 40px;
+}
+#cart{
+    font-size: 20px;
+    /* position: relative;
+    top:30px; */
+    /* padding-right: 5px; */
+    cursor: pointer;
+    
+}
+
+
+.righttop{
+    display: flex;
+    /* margin-left: 100px; */
+    align-items: center;
+}
+
+#cart-count{
+    width: 18px;
+    height: 18px;
+    font-size: 12px;
+    margin: 0;
+    box-sizing: border-box;
+    text-align: center;
+    font-weight: 600;
+    background-color: #009688;
+    color: white;
+    border-radius: 70%;
+    position: relative;
+     top: -16px;
+     left:35px;
+}
+
