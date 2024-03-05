@@ -5,9 +5,9 @@ const MainComponent = () => {
     "bd16d991-11c8-4d1e-9900-edd5ed4a9b21"
   );
   const [components, setComponents] = useState([]);
-  const [selectedComponent, setSelectedComponent] = useState(null);
+  const [selectedComponents, setSelectedComponents] = useState([]);
   const [responseData, setResponseData] = useState(null);
-  const [selectedName, setSelectedName] = useState(null);
+  const [selectedName, setSelectedName] = useState([]);
   const [availableTags, setAvailableTags] = useState([]);
   const [selectedTag, setSelectedTag] = useState(null);
   const [showSpinnerModal, setShowSpinnerModal] = useState(false);
@@ -20,7 +20,6 @@ const MainComponent = () => {
     setShowSpinnerModal(true);
     const apiComponents =
       "https://guixfoyppb.execute-api.us-east-1.amazonaws.com/tagging/";
-
     axios
       .post(apiComponents, { intent: "agents" })
       .then((response) => {
@@ -48,23 +47,37 @@ const MainComponent = () => {
       });
   };
   const handleComponentSelect = (component) => {
-    setSelectedComponent(component);
-    setSelectedName(null);
+    setSelectedComponents([component]);
+    setSelectedName([]);
+    // if (component !== "Select All") {
+    //   const allNames = responseData[component]?.map((item) => item.Arn) || [];
+    //   setSelectedComponents(allNames);
+    //   fetchTagsForARN(allNames);
+    // }
   };
   const handleNameSelect = (name) => {
-    fetchTagsForARN(name);
-    setSelectedName(name);
+    if (name === "Select All") {
+      const allNames = components.flatMap((component) =>
+        responseData[component]?.map((item) => item.Arn)
+      );
+
+      setSelectedName(allNames);
+
+      fetchTagsForARN(allNames);
+    } else {
+      fetchTagsForARN(name);
+
+      setSelectedName((prevSelected) => [...prevSelected, name]);
+    }
   };
   const handleTagSelect = (tag) => {
     setSelectedTag(tag);
   };
   const handleRemoveTag = (arn, tagName) => {
-    let tagArr = [tagName];
-    console.log(tagName);
     const removeTagApi =
       "https://l78y00q47e.execute-api.us-east-1.amazonaws.com/test/";
     axios
-      .post(removeTagApi, { arn: arn, tagName: tagArr, intent: "unTag" })
+      .post(removeTagApi, { arn: arn, tagName: [tagName], intent: "unTag" })
       .then((response) => {
         setAvailableTags(
           availableTags.filter(([key, value]) => key !== tagName)
@@ -78,24 +91,34 @@ const MainComponent = () => {
     setShowSpinnerModal(true);
     const addTagApi =
       "https://l78y00q47e.execute-api.us-east-1.amazonaws.com/test/";
-    axios
-      .post(addTagApi, {
-        arn: selectedName,
-        tagName: newTagKey,
-        tagValue: newTagValue,
-        intent: "addTag",
-      })
-      .then((response) => {
-        fetchTagsForARN(selectedName); // Refresh tags after adding
-        setNewTagKey("");
-        setNewTagValue("");
-        setShowSpinnerModal(false);
-      })
-      .catch((error) => {
-        console.error("Error adding tag:", error);
-        setShowSpinnerModal(false);
-      });
+
+    const addTagsWithDelay = async () => {
+      // for (let component of selectedName) {
+      try {
+        await axios.post(addTagApi, {
+          arn: selectedName,
+          tagName: newTagKey,
+          tagValue: newTagValue,
+          intent: "addTag",
+        });
+        // Refresh tags after adding for each component
+        fetchTagsForARN(selectedName);
+      } catch (error) {
+        console.error(
+          "Error adding tag for component",
+          selectedName,
+          ":",
+          error
+        );
+      }
+      // }
+      setNewTagKey("");
+      setNewTagValue("");
+      setShowSpinnerModal(false);
+    };
+    addTagsWithDelay();
   };
+
   return (
     <div>
       <div style={{ marginBottom: "20px" }}>
@@ -187,17 +210,18 @@ const MainComponent = () => {
         >
           <h2 style={{ marginBottom: "20px", fontSize: "20px" }}>Components</h2>
           <select
-            value={selectedComponent}
+            value={selectedComponents}
             onChange={(event) => handleComponentSelect(event.target.value)}
             style={{
               width: "100%",
+              height: "200px",
               padding: "8px",
               border: "1px solid #ccc",
               borderRadius: "5px",
               fontSize: "16px",
             }}
+            multiple
           >
-            <option value="">Select a component</option>
             {components.map((component, index) => (
               <option key={index} value={component}>
                 {component}
@@ -222,15 +246,20 @@ const MainComponent = () => {
             onChange={(event) => handleNameSelect(event.target.value)}
             style={{
               width: "100%",
+              height: "200px",
               padding: "8px",
               border: "1px solid #ccc",
               borderRadius: "5px",
               fontSize: "16px",
+              overflowY: "scroll",
             }}
+            multiple
           >
-            <option value="">Select a name</option>
-            {selectedComponent &&
-              responseData[selectedComponent]?.map((item, index) => (
+            <option value="Select All" type="checkbox">
+              Select All
+            </option>
+            {selectedComponents.length > 0 &&
+              responseData[selectedComponents[0]]?.map((item, index) => (
                 <option key={index} value={item.Arn}>
                   {item.Name}
                 </option>
