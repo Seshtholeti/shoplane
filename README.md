@@ -20,9 +20,11 @@ const MainComponent = () => {
     setShowSpinnerModal(true);
     const apiComponents =
       "https://guixfoyppb.execute-api.us-east-1.amazonaws.com/tagging/";
+
     axios
       .post(apiComponents, { intent: "agents" })
       .then((response) => {
+        console.log(response.data);
         setComponents(Object.keys(response.data));
         setResponseData(response.data);
         setShowSpinnerModal(false);
