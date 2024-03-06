@@ -197,31 +197,24 @@ const MainComponent = () => {
           </div>
         </div>
       )}
+     
       <div style={{ display: "flex", padding: "20px" }}>
-        <div
-          style={{
-            flex: "1",
-            marginRight: "20px",
-            backgroundColor: "#D3D3D3",
-            borderRadius: "10px",
-            boxShadow: "0 0 10px rgba(0, 0, 0, 0.1)",
-            padding: "20px",
-          }}
-        >
+        <div style={{ flex: "1", marginRight: "20px" }}>
           <h2 style={{ marginBottom: "20px", fontSize: "20px" }}>Components</h2>
           <select
             value={selectedComponents}
             onChange={(event) => handleComponentSelect(event.target.value)}
             style={{
               width: "100%",
-              height: "200px",
               padding: "8px",
               border: "1px solid #ccc",
               borderRadius: "5px",
               fontSize: "16px",
             }}
-            multiple
           >
+            <option value="" disabled selected>
+              Select a component
+            </option>
             {components.map((component, index) => (
               <option key={index} value={component}>
                 {component}
@@ -229,35 +222,42 @@ const MainComponent = () => {
             ))}
           </select>
         </div>
-        <div
-          style={{
-            flex: "1",
-            backgroundColor: "#D3D3D3",
-            borderRadius: "10px",
-            boxShadow: "0 0 10px rgba(0, 0, 0, 0.1)",
-            padding: "20px",
-          }}
-        >
+        <div style={{ flex: "1" }}>
           <h2 style={{ marginBottom: "20px", fontSize: "20px" }}>
             Component Names
           </h2>
           <select
             value={selectedName}
-            onChange={(event) => handleNameSelect(event.target.value)}
+            onChange={(event) => {
+              const value = event.target.value;
+              if (value === "Select All") {
+                const allNames =
+                  responseData[selectedComponents[0]]?.map(
+                    (item) => item.Arn
+                  ) || [];
+                setSelectedName(allNames);
+              } else {
+                const updatedSelectedNames = selectedName.includes(value)
+                  ? selectedName.filter((name) => name !== value)
+                  : [...selectedName, value];
+                setSelectedName(updatedSelectedNames);
+              }
+            }}
             style={{
               width: "100%",
-              height: "200px",
               padding: "8px",
               border: "1px solid #ccc",
               borderRadius: "5px",
               fontSize: "16px",
-              overflowY: "scroll",
             }}
             multiple
           >
-            <option value="Select All" type="checkbox">
-              Select All
+            <option value="" disabled selected>
+              Select a component name
             </option>
+            {selectedComponents.length > 0 && (
+              <option value="Select All">Select All</option>
+            )}
             {selectedComponents.length > 0 &&
               responseData[selectedComponents[0]]?.map((item, index) => (
                 <option key={index} value={item.Arn}>
@@ -267,6 +267,7 @@ const MainComponent = () => {
           </select>
         </div>
       </div>
+
       <div style={{ display: "flex", padding: "20px" }}>
         <div
           style={{
