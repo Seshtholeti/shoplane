@@ -5,6 +5,7 @@ const client = new ConnectClient('eu-west-2');
 
 export const handler = async (event,context,callback) => {
   const queue1 = 'arn:aws:connect:eu-west-2:879634695871:instance/f01f9b30-5eb9-4744-8dd2-3baa9b68285c/queue/2fcc1817-6fb6-477a-be1e-88b5c1d3c98a'
+  const queue2 = 'arn:aws:connect:eu-west-2:879634695871:instance/f01f9b30-5eb9-4744-8dd2-3baa9b68285c/queue/240b0ef7-708f-40fa-bf87-1c1f7b458906'
 const input = { // GetMetricDataV2Request
   ResourceArn: "arn:aws:connect:eu-west-2:879634695871:instance/f01f9b30-5eb9-4744-8dd2-3baa9b68285c", // required
   StartTime: new Date(1715144400 * 1000), // required
@@ -17,7 +18,7 @@ const input = { // GetMetricDataV2Request
     { // FilterV2
       FilterKey: "QUEUE",
       FilterValues: [ // FilterValueList
-        queue1,
+        queue1,queue2
       ],
     },
   ],
@@ -41,132 +42,89 @@ const input = { // GetMetricDataV2Request
 
 const command = new GetMetricDataV2Command(input);
 const response = await client.send(command);
-console.log(response)
-const response1 = response.MetricResults[0]//{ Collections: [[Object], [Object]] };
-const result = response1.Collections
-console.log('rr',response1.Collections,typeof(result),response1.Collections.length)
+// console.log(response, response.MetricResults.length)
+let putData2 = null;
+let putData1 = null;
 
+ 
+if(response && response.MetricResults && response.MetricResults.length>0){
+console.log("Metric Results:",response.MetricResults); //Logging metric results
+const response1 = response.MetricResults[0]//{ Collections: [[Object], [Object]] };
+console.log(response.MetricResults)
+const result = response1.Collections
+console.log("Result 1:",result) //Logging result 1
+console.log('rr',response1.Collections,typeof(result),response1.Collections.length)
+console.log(result[0],result[1])
 const result1 = {};
 result.forEach(item => {
 const key = item.Metric.Name;
 const value = item.Value;
 result1[key] = value;
 });
-console.log(result1)
-console.log('seshu')
+
+putData1 = await storeData.runFunction(result1,queue1 );
+console.log("put Data 1:", putData1) ; //Logging put Data 1
+
+console.log(result1);
+console.log('seshu');
 
 
-let putData = await storeData.runFunction(result1,queue1 );
-return putData;
+
+if(response.MetricResults.length>1){
+
+const response2 = response.MetricResults[1]//{ Collections: [[Object], [Object]] };
+const result2 = response2.Collections
+console.log("Result 2:", result2)   //logging result2
+console.log('check',response1.Collections,typeof(result),response1.Collections.length)
+
+const result2Data = {};
+result2.forEach(item => {
+const key = item.Metric.Name;
+const value = item.Value;
+result2Data[key] = value;
+});
+
+
+
+
+
+
+putData2 = await storeData.runFunction(result2Data,queue2 );
+console.log("put Data 2:", putData2) ;  //Logging put Data 2
+
+}
+}
+return {putData1,putData2};
 
 
 }
 
+// const decodedData = event.records.map(record => Buffer.from(record.data,'base64').toString('utf-8'));
+    
+//     // console.log('decodedData:',decodedData);
+    
+//   /* decodedData.forEach((data, index)=> {
+//         console.log(`Decoded data for record ${index}`, data);
+//     });*/
+//     const output = event.records.map((record) => ({
+//         recordId: record.recordId,
+//         result: 'Ok',
+//         data: record.data,
+//     }));
+//     // console.log('output : ',output);
+//     console.log(`Processing completed.  Successful records ${output.length}.`);
+//     const records = {};
+//     // records['decodeOutput'] = output;
+//     records['response'] = response;
+//     let putData = await storeData.runFunction(records);
+//     return records ;
+
+
+// };
 
 
 
-import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
-import {
-  DynamoDBDocumentClient,
-  PutCommand
-} from "@aws-sdk/lib-dynamodb";
+ 
 
-const client = new DynamoDBClient({});
-const dynamo = DynamoDBDocumentClient.from(client);
-
-async function runFunction(context,queue1){
-    let finalData = {};
-      console.log('inside ()', context,queue1,context.CONTACTS_HANDLED);
-
- const tableName = "wb_wallboard_data";
- try {
-                     const res =  await dynamo.send(
-                      new PutCommand({
-                        TableName: tableName,
-                         Item: {
-         "QueueArn": queue1,
-         "CONTACTS_HANDLED": context.CONTACTS_HANDLED || 0, // Provide default value if property is missing
-         "MAX_QUEUED_TIME": context.MAX_QUEUED_TIME || 0, // Provide default value if property is missing
-       }
-                        })
-                      );
-                      console.log(res)
-                    }
-                    catch(err) {
-                      return new Promise((resolve, reject) => {reject(finalData['data'] = err)});
-                    };
-
-}
-  
-
-
-export {
-  runFunction
-};
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-Response
-{
-  "putData1": {
-    "$metadata": {
-      "httpStatusCode": 200,
-      "requestId": "2Q36LH1B2MDD61L90N60625087VV4KQNSO5AEMVJF66Q9ASUAAJG",
-      "attempts": 1,
-      "totalRetryDelay": 0
-    }
-  },
-  "putData2": null
-}
-
-Function Logs
-START RequestId: 00558bff-b1d1-4f31-b1c9-5225daca6357 Version: $LATEST
-2024-05-16T01:26:40.417Z	00558bff-b1d1-4f31-b1c9-5225daca6357	INFO	Metric Results: [ { Collections: [ [Object], [Object] ] } ]
-2024-05-16T01:26:40.419Z	00558bff-b1d1-4f31-b1c9-5225daca6357	INFO	[ { Collections: [ [Object], [Object] ] } ]
-2024-05-16T01:26:40.420Z	00558bff-b1d1-4f31-b1c9-5225daca6357	INFO	Result 1: [
-  { Metric: { Name: 'CONTACTS_HANDLED' }, Value: 1 },
-  { Metric: { Name: 'MAX_QUEUED_TIME' }, Value: 13.835 }
-]
-2024-05-16T01:26:40.420Z	00558bff-b1d1-4f31-b1c9-5225daca6357	INFO	rr [
-  { Metric: { Name: 'CONTACTS_HANDLED' }, Value: 1 },
-  { Metric: { Name: 'MAX_QUEUED_TIME' }, Value: 13.835 }
-] object 2
-2024-05-16T01:26:40.420Z	00558bff-b1d1-4f31-b1c9-5225daca6357	INFO	{ Metric: { Name: 'CONTACTS_HANDLED' }, Value: 1 } { Metric: { Name: 'MAX_QUEUED_TIME' }, Value: 13.835 }
-2024-05-16T01:26:40.457Z	00558bff-b1d1-4f31-b1c9-5225daca6357	INFO	inside () { CONTACTS_HANDLED: 1, MAX_QUEUED_TIME: 13.835 } arn:aws:connect:eu-west-2:879634695871:instance/f01f9b30-5eb9-4744-8dd2-3baa9b68285c/queue/2fcc1817-6fb6-477a-be1e-88b5c1d3c98a 1
-2024-05-16T01:26:40.623Z	00558bff-b1d1-4f31-b1c9-5225daca6357	INFO	{
-  '$metadata': {
-    httpStatusCode: 200,
-    requestId: '2Q36LH1B2MDD61L90N60625087VV4KQNSO5AEMVJF66Q9ASUAAJG',
-    extendedRequestId: undefined,
-    cfId: undefined,
-    attempts: 1,
-    totalRetryDelay: 0
-  }
-}
-2024-05-16T01:26:40.623Z	00558bff-b1d1-4f31-b1c9-5225daca6357	INFO	put Data 1: {
-  '$metadata': {
-    httpStatusCode: 200,
-    requestId: '2Q36LH1B2MDD61L90N60625087VV4KQNSO5AEMVJF66Q9ASUAAJG',
-    extendedRequestId: undefined,
-    cfId: undefined,
-    attempts: 1,
-    totalRetryDelay: 0
-  }
-}
-2024-05-16T01:26:40.624Z	00558bff-b1d1-4f31-b1c9-5225daca6357	INFO	{ CONTACTS_HANDLED: 1, MAX_QUEUED_TIME: 13.835 }
-2024-05-16T01:26:40.624Z	00558bff-b1d1-4f31-b1c9-5225daca6357	INFO	seshu
-END RequestId: 00558bff-b1d1-4f31-b1c9-5225daca6357
+ 
+    
