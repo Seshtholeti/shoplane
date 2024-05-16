@@ -122,34 +122,51 @@ export {
 
 Response
 {
+  "putData1": {
+    "$metadata": {
+      "httpStatusCode": 200,
+      "requestId": "2Q36LH1B2MDD61L90N60625087VV4KQNSO5AEMVJF66Q9ASUAAJG",
+      "attempts": 1,
+      "totalRetryDelay": 0
+    }
+  },
   "putData2": null
 }
 
 Function Logs
-START RequestId: c5003bbe-e365-43fe-8750-ee018e8c1327 Version: $LATEST
-2024-05-16T01:21:19.178Z	c5003bbe-e365-43fe-8750-ee018e8c1327	INFO	Metric Results: [ { Collections: [ [Object], [Object] ] } ]
-2024-05-16T01:21:19.236Z	c5003bbe-e365-43fe-8750-ee018e8c1327	INFO	[ { Collections: [ [Object], [Object] ] } ]
-2024-05-16T01:21:19.236Z	c5003bbe-e365-43fe-8750-ee018e8c1327	INFO	Result 1: [
+START RequestId: 00558bff-b1d1-4f31-b1c9-5225daca6357 Version: $LATEST
+2024-05-16T01:26:40.417Z	00558bff-b1d1-4f31-b1c9-5225daca6357	INFO	Metric Results: [ { Collections: [ [Object], [Object] ] } ]
+2024-05-16T01:26:40.419Z	00558bff-b1d1-4f31-b1c9-5225daca6357	INFO	[ { Collections: [ [Object], [Object] ] } ]
+2024-05-16T01:26:40.420Z	00558bff-b1d1-4f31-b1c9-5225daca6357	INFO	Result 1: [
   { Metric: { Name: 'CONTACTS_HANDLED' }, Value: 1 },
   { Metric: { Name: 'MAX_QUEUED_TIME' }, Value: 13.835 }
 ]
-2024-05-16T01:21:19.237Z	c5003bbe-e365-43fe-8750-ee018e8c1327	INFO	rr [
+2024-05-16T01:26:40.420Z	00558bff-b1d1-4f31-b1c9-5225daca6357	INFO	rr [
   { Metric: { Name: 'CONTACTS_HANDLED' }, Value: 1 },
   { Metric: { Name: 'MAX_QUEUED_TIME' }, Value: 13.835 }
 ] object 2
-2024-05-16T01:21:19.237Z	c5003bbe-e365-43fe-8750-ee018e8c1327	INFO	{ Metric: { Name: 'CONTACTS_HANDLED' }, Value: 1 } { Metric: { Name: 'MAX_QUEUED_TIME' }, Value: 13.835 }
-2024-05-16T01:21:19.238Z	c5003bbe-e365-43fe-8750-ee018e8c1327	INFO	inside () { CONTACTS_HANDLED: 1, MAX_QUEUED_TIME: 13.835 } arn:aws:connect:eu-west-2:879634695871:instance/f01f9b30-5eb9-4744-8dd2-3baa9b68285c/queue/2fcc1817-6fb6-477a-be1e-88b5c1d3c98a 1
-2024-05-16T01:21:19.420Z	c5003bbe-e365-43fe-8750-ee018e8c1327	INFO	{
+2024-05-16T01:26:40.420Z	00558bff-b1d1-4f31-b1c9-5225daca6357	INFO	{ Metric: { Name: 'CONTACTS_HANDLED' }, Value: 1 } { Metric: { Name: 'MAX_QUEUED_TIME' }, Value: 13.835 }
+2024-05-16T01:26:40.457Z	00558bff-b1d1-4f31-b1c9-5225daca6357	INFO	inside () { CONTACTS_HANDLED: 1, MAX_QUEUED_TIME: 13.835 } arn:aws:connect:eu-west-2:879634695871:instance/f01f9b30-5eb9-4744-8dd2-3baa9b68285c/queue/2fcc1817-6fb6-477a-be1e-88b5c1d3c98a 1
+2024-05-16T01:26:40.623Z	00558bff-b1d1-4f31-b1c9-5225daca6357	INFO	{
   '$metadata': {
     httpStatusCode: 200,
-    requestId: '47KG1FU0EV9S333QJ2OMC3H7TVVV4KQNSO5AEMVJF66Q9ASUAAJG',
+    requestId: '2Q36LH1B2MDD61L90N60625087VV4KQNSO5AEMVJF66Q9ASUAAJG',
     extendedRequestId: undefined,
     cfId: undefined,
     attempts: 1,
     totalRetryDelay: 0
   }
 }
-2024-05-16T01:21:19.436Z	c5003bbe-e365-43fe-8750-ee018e8c1327	INFO	put Data 1: undefined
-2024-05-16T01:21:19.436Z	c5003bbe-e365-43fe-8750-ee018e8c1327	INFO	{ CONTACTS_HANDLED: 1, MAX_QUEUED_TIME: 13.835 }
-2024-05-16T01:21:19.437Z	c5003bbe-e365-43fe-8750-ee018e8c1327	INFO	seshu
-END RequestId: c5003bbe-e365-43fe-8750-ee018e8c1327
+2024-05-16T01:26:40.623Z	00558bff-b1d1-4f31-b1c9-5225daca6357	INFO	put Data 1: {
+  '$metadata': {
+    httpStatusCode: 200,
+    requestId: '2Q36LH1B2MDD61L90N60625087VV4KQNSO5AEMVJF66Q9ASUAAJG',
+    extendedRequestId: undefined,
+    cfId: undefined,
+    attempts: 1,
+    totalRetryDelay: 0
+  }
+}
+2024-05-16T01:26:40.624Z	00558bff-b1d1-4f31-b1c9-5225daca6357	INFO	{ CONTACTS_HANDLED: 1, MAX_QUEUED_TIME: 13.835 }
+2024-05-16T01:26:40.624Z	00558bff-b1d1-4f31-b1c9-5225daca6357	INFO	seshu
+END RequestId: 00558bff-b1d1-4f31-b1c9-5225daca6357
