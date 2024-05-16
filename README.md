@@ -1,30 +1,44 @@
+Response
+{
+  "putData1": {
+    "$metadata": {
+      "httpStatusCode": 200,
+      "requestId": "EGM7TOJ93HUKFGFJN66TSSE8MVVV4KQNSO5AEMVJF66Q9ASUAAJG",
+      "attempts": 1,
+      "totalRetryDelay": 0
+    }
+  },
+  "putData2": null
+}
 
-START RequestId: e243cc43-559a-4857-95e5-5ccc60e27e18 Version: $LATEST
-2024-05-16T13:32:22.862Z	e243cc43-559a-4857-95e5-5ccc60e27e18	INFO	Context for queue1: { CONTACTS_HANDLED: undefined, MAX_QUEUED_TIME: undefined }
-2024-05-16T13:32:22.864Z	e243cc43-559a-4857-95e5-5ccc60e27e18	INFO	inside () { CONTACTS_HANDLED: undefined, MAX_QUEUED_TIME: undefined } arn:aws:connect:eu-west-2:879634695871:instance/f01f9b30-5eb9-4744-8dd2-3baa9b68285c/queue/2fcc1817-6fb6-477a-be1e-88b5c1d3c98a undefined
-2024-05-16T13:32:23.043Z	e243cc43-559a-4857-95e5-5ccc60e27e18	INFO	{
+Function Logs
+START RequestId: 46ebf70f-bac3-4e3f-aeff-33b5e92bc43b Version: $LATEST
+2024-05-16T13:37:18.208Z	46ebf70f-bac3-4e3f-aeff-33b5e92bc43b	INFO	Response for queue1: { Collections: [] }
+2024-05-16T13:37:18.266Z	46ebf70f-bac3-4e3f-aeff-33b5e92bc43b	INFO	Context for queue1: { CONTACTS_HANDLED: undefined, MAX_QUEUED_TIME: undefined }
+2024-05-16T13:37:18.266Z	46ebf70f-bac3-4e3f-aeff-33b5e92bc43b	INFO	inside () { CONTACTS_HANDLED: undefined, MAX_QUEUED_TIME: undefined } arn:aws:connect:eu-west-2:879634695871:instance/f01f9b30-5eb9-4744-8dd2-3baa9b68285c/queue/2fcc1817-6fb6-477a-be1e-88b5c1d3c98a undefined
+2024-05-16T13:37:18.427Z	46ebf70f-bac3-4e3f-aeff-33b5e92bc43b	INFO	{
   '$metadata': {
     httpStatusCode: 200,
-    requestId: 'PJIFP9K4D184RIBA2CP0CN7G1RVV4KQNSO5AEMVJF66Q9ASUAAJG',
+    requestId: 'EGM7TOJ93HUKFGFJN66TSSE8MVVV4KQNSO5AEMVJF66Q9ASUAAJG',
     extendedRequestId: undefined,
     cfId: undefined,
     attempts: 1,
     totalRetryDelay: 0
   }
 }
-2024-05-16T13:32:23.043Z	e243cc43-559a-4857-95e5-5ccc60e27e18	INFO	putData1: {
+2024-05-16T13:37:18.427Z	46ebf70f-bac3-4e3f-aeff-33b5e92bc43b	INFO	putData1: {
   '$metadata': {
     httpStatusCode: 200,
-    requestId: 'PJIFP9K4D184RIBA2CP0CN7G1RVV4KQNSO5AEMVJF66Q9ASUAAJG',
+    requestId: 'EGM7TOJ93HUKFGFJN66TSSE8MVVV4KQNSO5AEMVJF66Q9ASUAAJG',
     extendedRequestId: undefined,
     cfId: undefined,
     attempts: 1,
     totalRetryDelay: 0
   }
 }
-2024-05-16T13:32:23.043Z	e243cc43-559a-4857-95e5-5ccc60e27e18	INFO	putData2: null
-END RequestId: e243cc43-559a-4857-95e5-5ccc60e27e18
-REPORT RequestId: e243cc43-559a-4857-95e5-5ccc60e27e18	Duration: 1059.81 ms	Billed Duration: 1060 ms	Memory Size: 128 MB	Max Memory Used: 105 MB	Init Duration: 477.78 ms
+2024-05-16T13:37:18.466Z	46ebf70f-bac3-4e3f-aeff-33b5e92bc43b	INFO	putData2: null
+END RequestId: 46ebf70f-bac3-4e3f-aeff-33b5e92bc43b
+REPORT RequestId: 46ebf70f-bac3-4e3f-aeff-33b5e92bc43b	Duration: 1038.50 ms	Billed Duration: 1039 ms	Memory Size: 128 MB	Max Memory Used: 105 MB	Init Duration: 523.76 ms
 
 
 
