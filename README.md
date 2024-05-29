@@ -15,7 +15,6 @@ const imageContainerStyle = {
   width: "80%",
   height: "90%",
   marginTop: "60px",
-
   borderRadius: "10px",
   display: "flex",
   justifyContent: "center",
@@ -74,7 +73,12 @@ const App = () => {
         console.error("Error fetching data:", error);
       }
     };
+    // Fetch data initially
     fetchData();
+    // Fetch data every 10 seconds (adjust interval as needed)
+    const interval = setInterval(fetchData, 10000);
+    // Cleanup interval on component unmount
+    return () => clearInterval(interval);
   }, []);
   const renderCard = (label, value) => (
     <div style={cardStyle}>
