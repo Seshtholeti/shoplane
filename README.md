@@ -1,25 +1,3 @@
-import React from "react";
-import "./App.css";
-import Dashboard from "./Dashboard";
-import Header from "./Header";
-import Footer from "./Footer";
-function App() {
-  return (
-    <div className="App">
-      <header>{/* <h1>QuickSight Dashboard</h1> */}</header>
-      <main>
-        <Header />
-        <Dashboard />
-        <Footer />
-      </main>
-    </div>
-  );
-}
-export default App;
-
-this is my app.js file
-
-
 export const msalConfig = {
   auth: {
     clientId: "39e0d8eb-57c0-4645-945d-732861666686",
@@ -36,77 +14,104 @@ export const loginRequest = {
   scopes: ["User.Read"],
 };
 
-this is my authConfig.js file
+this is my authConfig.js
 
+import React from "react";
+import ReactDOM from "react-dom/client";
+import App from "./App";
+import { PublicClientApplication, EventType } from "@azure/msal-browser";
+import { msalConfig } from "./authConfig";
 
-import { publicClientApplication } from '@azure/msal-browser'
+const msalInstance = new PublicClientApplication(msalConfig);
 
-
-class App extends Component {
-
-
-constructor(props){
-super(props);
-this.state = {
-error: null;
-isAuthenticated: false,
-user: {}
-this.login = this.login.bind(this)
-this.publicClientApplication = new publicApplication({
-auth: {
-clientId; authConfig.appId,
-redirectUri: authConfig.redirectUri,
-authority: authConfig.authority
-},
-cache: {
-cacheLoaction: "sessionStorage",
-storeAuthStateInCookie: true
+if (
+  !msalInstance.getActiveAccount() &&
+  msalInstance.getAllAccounts().length > 0
+) {
+  msalInstance.setActiveAccount(msalInstance.getActiveAccount()[0]);
 }
 
-}};
-
-}
-async login (){
-try {
-await this.publicClientApplication.loginPopup(
-{
-scopes: authConfig.scopes,
-prompt: "select_account"
+msalInstance.addEventCallback((event) => {
+  if (event.eventType === EventType.LOGIN_SUCCESS && event.payload.account) {
+    const account = event.payload.account;
+    msalInstance.setActiveAccount(account);
+  }
 });
-this.setState({isAuthenticated:true})
-}
-catch(err){
-this.setState({
-isAutenticated: false,
-user: {},
-error: err
-});
-}
-}
 
-logout(){
-this.publicApplication.logout();
-}
 
-render(){
+const root = ReactDOM.createRoot( document.getElementById('root'));
+root.render(
+  <App instance = {msalInstance}/>
+)
 
-return(
-<div className ="App">
-<header className="App-header">
-{this.state.IsAuthenticated ? <p>
-Successfully logged in </p>
-: <p>
-<button onClick = {() => this.logi()}>Login in</button>
-</p>
-}
+this is my index.js
 
-</header>
+import React from "react";
+import "./App.css";
+import Dashboard from "./Dashboard";
+import Header from "./Header";
+import Footer from "./Footer";
+import {
+  AuthenticatedTemplate,
+  UnauthenticatedTemplate,
+  useMsal,
+  MsalProvider,
+} from "@azure/msal-react";
+import { loginRequest } from "./authConfig";
 
-</div>
-);
-}
-}
+const WrappedView = () => {
+  const { instance } = useMsal();
+  const activeAccount = instance.getActiveAccount();
+
+  const handleRedirect = () => {
+    instance
+      .loginRedirect({
+        ...loginRequest,
+        prompt: "create",
+      })
+      .catch((error) => console.log(error));
+  };
+
+  return (
+    <div className="App">
+      <AuthenticatedTemplate>
+        {activeAccount ? <p>Authenticated Successfully</p> : null}
+      </AuthenticatedTemplate>
+      <UnauthenticatedTemplate>
+        <button onClick={handleRedirect}>Sign up</button>
+      </UnauthenticatedTemplate>
+    </div>
+  );
+};
+
+const App = ({ instance }) => {
+  return (
+    <MsalProvider instance={instance}>
+      <WrappedView />
+    </MsalProvider>
+  );
+};
 
 export default App;
 
-this is a refernce code I have got, please modify my app.js with respective to the reference code, and after successful login, it has to open the main content. please use class component only as above
+
+this is my app.js
+
+
+here, after the successful authentication I have to return the components below in the function app.
+
+function App() {
+  return (
+    <div className="App">
+      <header>{/* <h1>QuickSight Dashboard</h1> */}</header>
+      <main>
+        <Header />
+        <Dashboard />
+        <Footer />
+      </main>
+    </div>
+  );
+}
+export default App;
+
+please modify my app.js accordingly
