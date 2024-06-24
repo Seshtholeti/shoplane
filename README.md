@@ -1,141 +1,328 @@
-import React, { useState, useEffect } from "react";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faSignOutAlt } from "@fortawesome/free-solid-svg-icons";
-function Header({ onLogout }) {
-  const [currentTime, setCurrentTime] = useState(new Date());
-  const [isHovered, setIsHovered] = useState(false);
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setCurrentTime(new Date());
-    }, 1000);
-    return () => clearInterval(timer);
-  }, []);
-  const headerStyle = {
-    color: "white",
-    backgroundColor: "#800080",
-    padding: "10px",
-    height: "50px",
-    display: "flex",
-    alignItems: "center",
-    fontSize: "40px",
-    justifyContent: "space-between",
-  };
-  const formatDate = (date) => {
-    const day = String(date.getDate()).padStart(2, "0");
-    const month = String(date.getMonth() + 1).padStart(2, "0");
-    const year = date.getFullYear();
-    return `${day}/${month}/${year}`; // Changed date format to use slashes
-  };
-  const formatTime = (date) => {
-    return date.toLocaleTimeString("en-GB"); // en-GB locale for 24-hour format
-  };
-  const iconContainerStyle = {
-    display: "flex",
-    alignItems: "center",
-  };
-  const iconStyle = {
-    marginLeft: "20px",
-    fontSize: "30px",
-    color: "white",
-    cursor: "pointer",
-  };
-  const logoutTextStyle = {
-    fontSize: "10px",
-    marginLeft: "5px", // Adjusted margin to separate from the icon
-    visibility: isHovered ? "visible" : "hidden", // Toggle visibility based on hover state
-  };
-  return (
-    <div style={headerStyle}>
-      <div style={{ paddingLeft: "60px", paddingBottom: "5px" }}>
-        Wallboard-UK
-      </div>
-      <div style={iconContainerStyle}>
-        <div>
-          {formatDate(currentTime)}&nbsp;&nbsp;{formatTime(currentTime)}
-        </div>
-        <div
-          style={logoutTextStyle}
-          onMouseOver={() => setIsHovered(true)}
-          onMouseOut={() => setIsHovered(false)}
-          onClick={onLogout}
-        >
-          Logout
-        </div>
-        <FontAwesomeIcon
-          icon={faSignOutAlt}
-          style={iconStyle}
-          onMouseOver={() => setIsHovered(true)}
-          onMouseOut={() => setIsHovered(false)}
-          onClick={onLogout}
-        />
-      </div>
-    </div>
-  );
+const AWS = require("aws-sdk");
+var connect = new AWS.Connect({apiVersion: '2017-08-08'});
+//console.log(connect)
+
+/*
+* function to retrieve metrics data from Amazon connect
+*/
+
+async function getGroupMetrics(){
+  
+    const currentTime = new Date();
+    const roundedMinutes = Math.floor(currentTime.getMinutes() / 5) * 5;
+    const startTime = new Date(currentTime.getFullYear(), currentTime.getMonth(), currentTime.getDate(), currentTime.getHours(), roundedMinutes);
+    
+    var unixStartTimestamp = Math.floor(startTime.getTime()/1000);
+    console.log("unixTimestamp", unixStartTimestamp);
+    
+    const endTime = new Date(startTime.getTime() - (120 * 60 * 1000));
+    var unixEndTimestamp = Math.floor(endTime.getTime()/1000);
+    console.log("End time", unixEndTimestamp);
+   
+var DE_Group_English =process.env.DE_Group_English;
+var DE_Group_German = process.env.DE_Group_English;
+var params = { 
+      ResourceArn:process.env.ResourceArn,
+      StartTime:unixEndTimestamp,
+      EndTime: unixStartTimestamp, 
+      
+      Filters: [ 
+          {
+          FilterKey: "QUEUE",
+          FilterValues: [DE_Group_English, DE_Group_German],
+        },
+      ],
+      Metrics: [
+        {
+          Name: "AGENT_ANSWER_RATE",
+        },
+        {
+          Name: "CONTACTS_HANDLED"
+        },
+        {
+          Name: "MAX_QUEUED_TIME"
+        },
+        {
+          Name: "SUM_CONTACTS_ANSWERED_IN_X",
+          Threshold: [{
+            Comparison: "LT",
+            ThresholdValue: 7200
+          }]
+        }
+      ]
+    };
+
+  const data = await connect.getMetricDataV2(params).promise();
+  console.log(JSON.stringify(data)); 
+  
+  return data;
 }
-export default Header;
 
 
-this is my uk,
-import React, { useState, useEffect } from "react";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faSignOutAlt } from "@fortawesome/free-solid-svg-icons";
-function Header({ onLogout }) {
-  const [currentTime, setCurrentTime] = useState(new Date());
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setCurrentTime(new Date());
-    }, 1000);
-    return () => clearInterval(timer);
-  }, []);
-  const headerStyle = {
-    color: "white",
-    backgroundColor: "#00008B",
-    padding: "10px",
-    height: "50px",
-    display: "flex",
-    alignItems: "center",
-    fontSize: "40px",
-    justifyContent: "space-between",
-  };
-  const formatDate = (date) => {
-    const day = String(date.getDate()).padStart(2, "0");
-    const month = String(date.getMonth() + 1).padStart(2, "0");
-    const year = date.getFullYear();
-    return `${day}.${month}.${year}`;
-  };
-  const formatTime = (date) => {
-    return date.toLocaleTimeString("en-GB"); // en-GB locale for 24-hour format
-  };
-  const iconStyle = {
-    marginLeft: "20px",
-    fontSize: "30px",
-    color: "white",
-    cursor: "pointer",
-  };
-  const iconHoverStyle = {
-    color: "#c9302c",
-  };
-  return (
-    <div style={headerStyle}>
-      <div style={{ paddingLeft: "60px", paddingBottom: "5px" }}>
-        Wallboard-Germany
-      </div>
-      <div style={{ paddingRight: "60px", paddingBottom: "5px" }}>
-        {formatDate(currentTime)}&nbsp;&nbsp;{formatTime(currentTime)}
-        <FontAwesomeIcon
-          icon={faSignOutAlt}
-          style={iconStyle}
-          onMouseOver={(e) =>
-            (e.currentTarget.style.color = iconHoverStyle.color)
-          }
-          onMouseOut={(e) => (e.currentTarget.style.color = iconStyle.color)}
-          onClick={onLogout}
-        />
-      </div>
-    </div>
-  );
+async function getQueryMetrics(){
+  
+    const currentTime = new Date();
+    const roundedMinutes = Math.floor(currentTime.getMinutes() / 5) * 5;
+    const startTime = new Date(currentTime.getFullYear(), currentTime.getMonth(), currentTime.getDate(), currentTime.getHours(), roundedMinutes);
+    
+    var unixStartTimestamp = Math.floor(startTime.getTime()/1000);
+    console.log("unixTimestamp", unixStartTimestamp);
+    
+    const endTime = new Date(startTime.getTime() - (120 * 60 * 1000));
+    var unixEndTimestamp = Math.floor(endTime.getTime()/1000);
+    console.log("End time", unixEndTimestamp);
+   
+var DE_Queries_English = process.env.DE_Queries_English;
+var DE_Queries_German = process.env.DE_Queries_German;
+  var params = { 
+      ResourceArn: process.env.ResourceArn,
+      StartTime:unixEndTimestamp,
+      EndTime: unixStartTimestamp, 
+      
+      Filters: [ 
+          {
+          FilterKey: "QUEUE",
+          FilterValues: [DE_Queries_English, DE_Queries_German],
+        },
+      ],
+       Metrics: [
+        {
+          Name: "AGENT_ANSWER_RATE",
+        },
+        {
+          Name: "CONTACTS_HANDLED"
+        },
+        {
+          Name: "MAX_QUEUED_TIME"
+        },
+        {
+          Name: "SUM_CONTACTS_ANSWERED_IN_X",
+          Threshold: [{
+            Comparison: "LT",
+            ThresholdValue: 7200
+          }]
+        }
+      ]
+    };
+
+  const data = await connect.getMetricDataV2(params).promise();
+  console.log(JSON.stringify(data)); 
+  
+  return data;
 }
-export default Header;
 
 
-this is my germany
+async function getReservationMetrics(){
+  
+    const currentTime = new Date();
+    const roundedMinutes = Math.floor(currentTime.getMinutes() / 5) * 5;
+    const startTime = new Date(currentTime.getFullYear(), currentTime.getMonth(), currentTime.getDate(), currentTime.getHours(), roundedMinutes);
+    
+    var unixStartTimestamp = Math.floor(startTime.getTime()/1000);
+    console.log("unixTimestamp", unixStartTimestamp);
+    
+    const endTime = new Date(startTime.getTime() - (120 * 60 * 1000));
+    var unixEndTimestamp = Math.floor(endTime.getTime()/1000);
+    console.log("End time", unixEndTimestamp);
+   
+    var Queue_Reservation_German = process.env.Queue_Reservation_German;
+    var Queue_Reservation_English = process.env.Queue_Reservation_English;
+
+  var params = { 
+      ResourceArn: process.env.ResourceArn,
+      StartTime:unixEndTimestamp,
+      EndTime: unixStartTimestamp, 
+      
+      Filters: [ 
+          {
+          FilterKey: "QUEUE",
+          FilterValues: [Queue_Reservation_German, Queue_Reservation_English],
+        },
+      ],
+     // Groupings: [ "QUEUE"],
+     
+      Metrics: [
+        {
+          Name: "AGENT_ANSWER_RATE",
+        },
+        {
+          Name: "CONTACTS_HANDLED"
+        },
+        {
+          Name: "MAX_QUEUED_TIME"
+        },
+        {
+          Name: "SUM_CONTACTS_ANSWERED_IN_X",
+          Threshold: [{
+            Comparison: "LT",
+            ThresholdValue: 7200
+          }]
+        }
+      ]
+    };
+
+  const data = await connect.getMetricDataV2(params).promise();
+  console.log(JSON.stringify(data)); 
+  
+  return data;
+}
+
+
+async function getGroupCurrentMetrics(){
+  
+  var DE_Group_English =process.env.DE_Group_English;
+  var DE_Group_German = process.env.DE_Group_English;
+
+const params = { // GetCurrentMetricDataRequest
+  InstanceId: process.env.ResourceArn, // required
+  Filters: { // Filters
+     Queues: [ // Queues
+     DE_Group_English,DE_Group_German
+     ],
+    
+    
+    Channels: [ // Channels
+      "VOICE",
+    ],
+  },
+  CurrentMetrics: [ // CurrentMetrics // required
+    { // CurrentMetric
+      Name: "AGENTS_ONLINE",
+      Unit: "COUNT",
+    },
+    { // CurrentMetric
+      Name: "AGENTS_ON_CALL",
+      Unit: "COUNT",
+    },
+    { // CurrentMetric
+      Name: "CONTACTS_IN_QUEUE",
+      Unit: "COUNT",
+    },
+    { // CurrentMetric
+      Name: "AGENTS_STAFFED",
+      Unit: "COUNT",
+    },
+    { // CurrentMetric
+      Name: "AGENTS_AVAILABLE",
+      Unit: "COUNT",
+    },
+  ],
+  MaxResults: Number("2"),
+};
+
+
+  const data = await connect.getCurrentMetricData(params).promise();
+  console.log(JSON.stringify(data)); 
+  
+  return data;
+}
+
+
+async function getQueryCurrentMetrics(){
+  
+  var DE_Queries_English = process.env.DE_Queries_English;
+  var DE_Queries_German = process.env.DE_Queries_German;
+
+const params = { // GetCurrentMetricDataRequest
+  InstanceId: process.env.ResourceArn,
+  Filters: { // Filters
+     Queues: [ // Queues
+     DE_Queries_English,DE_Queries_German
+     ],
+    
+    Channels: [ // Channels
+      "VOICE",
+    ],
+  },
+  CurrentMetrics: [ // CurrentMetrics // required
+    { // CurrentMetric
+      Name: "AGENTS_ONLINE",
+      Unit: "COUNT",
+    },
+    { // CurrentMetric
+      Name: "AGENTS_ON_CALL",
+      Unit: "COUNT",
+    },
+    { // CurrentMetric
+      Name: "CONTACTS_IN_QUEUE",
+      Unit: "COUNT",
+    },
+    { // CurrentMetric
+      Name: "AGENTS_STAFFED",
+      Unit: "COUNT",
+    },
+        { // CurrentMetric
+      Name: "AGENTS_AVAILABLE",
+      Unit: "COUNT",
+    },
+  ],
+  MaxResults: Number("2"),
+};
+
+
+  const data = await connect.getCurrentMetricData(params).promise();
+  console.log(JSON.stringify(data)); 
+  
+  return data;
+}
+
+
+
+async function getReservationCurrentMetrics() {
+  
+  var Queue_Reservation_German = process.env.Queue_Reservation_German;
+  var Queue_Reservation_English = process.env.Queue_Reservation_English;
+
+  const params = { // GetCurrentMetricDataRequest
+  InstanceId: process.env.ResourceArn,
+  Filters: { // Filters
+    Queues: [ // Queues
+     Queue_Reservation_German, Queue_Reservation_English
+     ],
+    
+    
+    Channels: [ // Channels
+      "VOICE",
+    ],
+  },
+  CurrentMetrics: [ // CurrentMetrics // required
+    { // CurrentMetric
+      Name: "AGENTS_ONLINE",
+      Unit: "COUNT",
+    },
+    { // CurrentMetric
+      Name: "AGENTS_ON_CALL",
+      Unit: "COUNT",
+    },
+    { // CurrentMetric
+      Name: "CONTACTS_IN_QUEUE",
+      Unit: "COUNT",
+    },
+    { // CurrentMetric
+      Name: "AGENTS_STAFFED",
+      Unit: "COUNT",
+    },
+    { // CurrentMetric
+      Name: "AGENTS_AVAILABLE",
+      Unit: "COUNT",
+    },
+  ],
+  MaxResults: Number("2"),
+};
+
+
+  const data = await connect.getCurrentMetricData(params).promise();
+  console.log(JSON.stringify(data)); 
+  
+  return data;
+}
+
+
+module.exports = {
+  getReservationMetrics,
+  getQueryMetrics,
+  getGroupMetrics,
+  getReservationCurrentMetrics,
+  getGroupCurrentMetrics,
+  getQueryCurrentMetrics,
+};
