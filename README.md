@@ -1,49 +1,14 @@
-AWSTemplateFormatVersion: "2010-09-09"
-
-Description: "Example that deploys an Amazon Connect instance with contact flow."
-
-Transform:
-  - "AmazonConnectProvider"
-
+AWSTemplateFormatVersion: 2010-09-09
+Description: Specifies a flow for an Amazon Connect instance
 Resources:
-
-    myConnectInstance:
-        Type: "AWS::Connect::Instance"
-        Properties:
-            Domain: "ianmexample"
-    
-    myConnectContactFlow:
-        Type: "AWS::Connect::ContactFlow"
-        Properties:
-            ConnectInstance: !GetAtt myConnectInstance.Domain
-            Name: "myFlow"
-            Description: "An example flow"
-            States:
-              - Id: "play"
-                Start: true
-                Type: "PlayPrompt"
-                Parameters:
-                  - Name: "Text"
-                    Value: "You have called an Amazon Connect instance"
-                  - Name: "TextToSpeechType"
-                    Value: "text"
-                Branches:
-                  - Destination: "disconnect"
-                    Condition: "Success"
-              - Id: "disconnect"
-                Type: "Disconnect"
-
-    myConnectPhoneNumber:
-        Type: "AWS::Connect::PhoneNumber"
-        Properties:
-            ConnectInstance: !GetAtt myConnectInstance.Domain
-            ContactFlow: !GetAtt myConnectContactFlow.Name
-            Type: "DID"
-            Country: "Australia"
-            Description: "An example phone number"
-
-Outputs:
-
-    myConnectOutput:
-        Description: The phone number for the contact flow
-        Value: !GetAtt myConnectPhoneNumber.PhoneNumber
+  Flow:
+    Type: 'AWS::Connect::ContactFlow'
+    Properties:
+      Name: ExampleFlow
+      Description: flow created using cfn
+      InstanceArn: arn:aws:connect:region-name:aws-account-id:instance/instance-arn
+      Type: CONTACT_FLOW
+      Content: ExampleFlow content(JSON) using Amazon Connect Flow Language.
+      Tags:
+        - Key: testkey
+          Value: testValue
