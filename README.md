@@ -1,12 +1,14 @@
 import React, { useEffect, useState } from "react";
 import Header from "./Header";
-// Import the local images
+
 import img1 from "./img/img1.jpg";
 import img2 from "./img/img2.jpg";
-import img3 from "./img/img3.jpg";
-import img4 from "./img/img4.jpeg";
-import img5 from "./img/img5.jpg";
-import img6 from "./img/img6.jpeg";
+// Import only two images
+// import img3 from "./img/img3.jpg";
+// import img4 from "./img/img4.jpeg";
+// import img5 from "./img/img5.jpg";
+// import img6 from "./img/img6.jpeg";
+
 const columnStyle = {
   flex: 1,
   display: "flex",
@@ -30,6 +32,7 @@ const imageContainerStyle = {
   width: "80%",
   height: "90%",
   display: "flex",
+  // backgroundColor: "red",
   justifyContent: "center",
   alignItems: "center",
   borderRadius: "5px",
@@ -51,7 +54,7 @@ const dataContainerStyle = {
   marginTop: "20px",
 };
 const cardStyle = {
-  backgroundColor: "#800080",
+  backgroundColor: "#00008B",
   padding: "8px",
   borderRadius: "5px",
   display: "flex",
@@ -59,8 +62,8 @@ const cardStyle = {
   alignItems: "center",
   height: "30px",
   color: "#fff",
-  fontSize: "14px", // Adjusted font size
-  width: "220px", // Adjusted width
+  fontSize: "16px",
+  width: "300px",
   transition: "background-color 0.3s ease",
 };
 const hoveredCardStyle = {
@@ -72,12 +75,12 @@ const App = () => {
   const [data, setData] = useState([]);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [hoveredCardIndex, setHoveredCardIndex] = useState(null);
-  const images = [img1, img2, img3, img4, img5, img6];
+  const images = [img1, img2]; // Limit the array to two images
   useEffect(() => {
     const fetchData = async () => {
       try {
         const response = await fetch(
-          "https://w4pcvz4yl0.execute-api.eu-west-2.amazonaws.com/PROD"
+          "https://52t6tr8gt5.execute-api.eu-west-2.amazonaws.com/UAT"
         );
         const responseData = await response.json();
         console.log(responseData);
@@ -93,7 +96,7 @@ const App = () => {
   useEffect(() => {
     const imageRotationInterval = setInterval(() => {
       setCurrentImageIndex((prevIndex) => (prevIndex + 1) % images.length);
-    }, 5000);
+    }, 60000); // Set interval to 1 minute
     return () => clearInterval(imageRotationInterval);
   }, [images.length]);
   const renderCard = (label, value, index) => (
@@ -147,15 +150,11 @@ const App = () => {
       </div>
     );
   };
+  const queryItems = data.filter((item) => item.DEPARTMENT === "Queries");
   const reservationItems = data.filter(
-    (item) => item.DEPARTMENT === "Reservation center"
+    (item) => item.DEPARTMENT === "Reservation"
   );
-  const guestRelationsItems = data.filter(
-    (item) => item.DEPARTMENT === "Guest Relations"
-  );
-  const restaurantItems = data.filter(
-    (item) => item.DEPARTMENT === "Restaurant"
-  );
+  // const groupItems = data.filter((item) => item.DEPARTMENT === "Group");
   return (
     <div style={containerStyle}>
       <div style={imageContainerStyle}>
@@ -171,9 +170,9 @@ const App = () => {
       </div>
       {data.length > 0 && (
         <div style={dataContainerStyle}>
-          {renderColumn(reservationItems, "Reservation center")}
-          {renderColumn(guestRelationsItems, "Guest Relations")}
-          {renderColumn(restaurantItems, "Restaurant")}
+          {renderColumn(reservationItems, "Reservation")}
+          {renderColumn(queryItems, "Query")}
+          {/* {renderColumn(groupItems, "Group")} */}
         </div>
       )}
     </div>
