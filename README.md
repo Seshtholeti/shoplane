@@ -1,3 +1,12 @@
+Property ‘Content’ will be declared in the ‘Content.json’ file and this file will be uploaded on the S3. The json content inside the ‘Content.json’ file should be in string in the following way, below is just a sample snippet, please change it with your content. 
+—————————
+"Content": "{\"Version\":\"2019-10-30\",\"StartAction\":\"ending-block\",\"Metadata\":{\"entryPointPosition\":{\"x\":40,\"y\":40},\"ActionMetadata\":{\"ending-block\":{\"position\":{\"x\":299.2,\"y\":33.6},\"isFriendlyName\":true}},\"Annotations\":[],\"name\”:\”Test-flow\",\"description\":\"\",\"type\":\"contactFlow\",\"status\":\"published\",\"hash\":{}},\"Actions\":[{\"Parameters\":{},\"Identifier\":\"ending-block\",\"Type\":\"EndFlowExecution\",\"Transitions\":{}}]}"
+—————————
+
+
+
+
+
 {
   "Version": "2019-10-30",
   "StartAction": "1ff34355-4c6a-42fb-8e71-627d4ffcde6a",
