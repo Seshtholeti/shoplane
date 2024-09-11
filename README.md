@@ -1,59 +1,101 @@
-https://rrjboaljfmf5vyhuienk5mzszi0weebt.lambda-url.us-east-1.on.aws/
+```javascript
+// src/GamificationUI.js
+import React, { useEffect, useState } from 'react';
+import { Table, Progress, Badge, Layout, Typography } from 'antd';
+import axios from 'axios';
+import './GamificationUI.css'; // Import custom styles
 
-this is the api.
+const { Header, Content } = Layout;
+const { Title } = Typography;
+
+const GamificationUI = () => {
+    const [agents, setAgents] = useState([]);
+
+    useEffect(() => {
+        const fetchData = async () => {
+            try {
+                const response = await axios.get('https://rrjboaljfmf5vyhuienk5mzszi0weebt.lambda-url.us-east-1.on.aws/');
+                setAgents(response.data);
+            } catch (error) {
+                console.error('Error fetching data:', error);
+            }
+        };
+        fetchData();
+    }, []);
+
+    const columns = [
+        { title: 'Agent Name', dataIndex: 'agent_name', key: 'agent_name' },
+        { title: 'Performance Score', dataIndex: 'performance_score', key: 'performance_score' },
+        { title: 'Calls Count', dataIndex: 'agent_calls_count', key: 'agent_calls_count' },
+        {
+            title: 'Progress',
+            dataIndex: 'performance_score',
+            render: (score) => <Progress percent={(score / 400) * 100} status={score > 300 ? 'success' : 'normal'} />,
+        },
+        {
+            title: 'Badge',
+            dataIndex: 'performance_score',
+            render: (score) => (
+                <Badge count={score > 300 ? 'Gold' : score > 200 ? 'Silver' : 'Bronze'} style={{ backgroundColor: score > 300 ? '#FFD700' : score > 200 ? '#C0C0C0' : '#cd7f32' }} />
+            ),
+        },
+    ];
+
+    return (
+        <Layout style={{ minHeight: '100vh' }}>
+            <Header className="header">
+                <Title style={{ color: 'white' }} level={2}>Agent Performance Leaderboard</Title>
+            </Header>
+            <Content style={{ padding: '20px' }}>
+                <Table dataSource={agents} columns={columns} rowKey="agent_id" pagination={false} />
+            </Content>
+        </Layout>
+    );
+};
+
+export default GamificationUI;
+
+```
+
+```css
+/* src/GamificationUI.css */
+.header {
+    background-color: #1890ff;
+    padding: 20px;
+    text-align: center;
+}
+
+.ant-table {
+    background: #fff;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.ant-table th {
+    background: #f0f2f5;
+}
+
+.ant-badge {
+    font-weight: bold;
+}
+
+```
 
 
-below is the api response.
+```javascript
+// src/App.js
+import React from 'react';
+import 'antd/dist/antd.css'; // Import Ant Design styles
+import GamificationUI from './GamificationUI';
 
-[
-    {
-        "agent_id": "9783145b-f6e4-4d42-9414-eb8943c0d9aa",
-        "agent_sentiments_score": "-16",
-        "customer_sentiments_score": "0",
-        "agent_talk_time": "10323",
-        "agent_non_talk_time": "13271",
-        "agent_calls_count": "2",
-        "agent_name": "mohan",
-        "performance_score": 301
-    },
-    {
-        "agent_id": "9783145b-f6e4-4d42-9414-eb8943c0d9as",
-        "agent_sentiments_score": "50",
-        "customer_sentiments_score": "10",
-        "agent_talk_time": "8762",
-        "agent_non_talk_time": "11082",
-        "agent_calls_count": "3",
-        "agent_name": "Seshu",
-        "performance_score": 208
-    },
-    {
-        "agent_id": "9783145b-f6e4-4d42-9414-eb8943c0d9aw",
-        "agent_sentiments_score": "20",
-        "customer_sentiments_score": "40",
-        "agent_talk_time": "9262",
-        "agent_non_talk_time": "11342",
-        "agent_calls_count": "4",
-        "agent_name": "Devi",
-        "performance_score": 187
-    },
-    {
-        "agent_id": "9783145b-f6e4-4d42-9414-eb8943c0d9ar",
-        "agent_sentiments_score": "30",
-        "customer_sentiments_score": "20",
-        "agent_talk_time": "8342",
-        "agent_non_talk_time": "10182",
-        "agent_calls_count": "2",
-        "agent_name": "Rajiya",
-        "performance_score": 166
-    },
-    {
-        "agent_id": "872d83df-69ec-47ba-9458-5bfb3fa9970f",
-        "agent_sentiments_score": "55",
-        "customer_sentiments_score": "18",
-        "agent_talk_time": "8900",
-        "agent_non_talk_time": "10000",
-        "agent_calls_count": "2",
-        "agent_name": "Aniket",
-        "performance_score": 82
-    }
-]
+const App = () => {
+    return (
+        <div>
+            <GamificationUI />
+        </div>
+    );
+};
+
+export default App;
+
+```
