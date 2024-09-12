@@ -1,3 +1,170 @@
+```css
+.header {
+  background-color: #00008b;
+  padding: 20px;
+  text-align: center;
+}
+.header-content {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100%;
+}
+.ant-table {
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  margin-top: 20px;
+  font-size: 16px;
+}
+.ant-table th {
+  background-color: #00008b;
+  color: white;
+  font-size: 20px; /* Enhanced font size */
+  font-weight: bold;
+  padding: 12px; /* Decreased padding for row height */
+  border-bottom: 2px solid #ddd; /* Added bottom border */
+}
+.ant-table td {
+  padding: 8px; /* Decreased padding for row height */
+  font-size: 18px; /* Enhanced font size */
+  background-color: #f6f6f6;
+  border-bottom: 1px solid #ddd; /* Added bottom border */
+}
+.ant-table tr:hover {
+  background-color: #e6f7ff; /* Light blue on hover */
+}
+.gold-row {
+  background-color: #fffde7;
+}
+.silver-row {
+  background-color: #f3f6f9;
+}
+.bronze-row {
+  background-color: #f9f9f9;
+}
+.ant-badge {
+  font-weight: bold;
+}
+.top-performers {
+  margin-bottom: 20px;
+}
+.top-performers-list {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+.top-performer-card {
+  background-color: #fff;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  padding: 20px;
+  text-align: center;
+  margin: 10px;
+  width: 220px;
+  transition: transform 0.2s;
+}
+.top-performer-card:hover {
+  transform: scale(1.05);
+}
+.badge-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.gold-badge {
+  color: #ffd700;
+  font-size: 24px;
+  margin-right: 8px;
+}
+.performance-score {
+  display: block;
+  margin: 10px 0;
+}
+.car-progress-container {
+  position: relative;
+  width: 100%;
+  height: 50px;
+  margin: 10px 0;
+}
+.track {
+  background-color: #e0e0e0;
+  border-radius: 15px;
+  overflow: hidden;
+  height: 100%;
+  position: relative;
+}
+.progress-bar {
+  background-color: #1890ff;
+  height: 100%;
+  border-radius: 15px;
+  transition: width 0.5s ease-in-out;
+}
+.progress-text {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-weight: bold;
+}
+.top-performer-container {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 20px;
+}
+.sparkle {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  animation: sparkle 1.5s infinite;
+}
+@keyframes sparkle {
+  0% {
+    opacity: 0;
+    transform: scale(0.5);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.2);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1);
+  }
+}
+.sparkle:nth-child(1) {
+  background-color: #ff0000;
+  left: 10%;
+  top: 10%;
+  animation-delay: 0s;
+}
+.sparkle:nth-child(2) {
+  background-color: #00ff00;
+  left: 30%;
+  top: 20%;
+  animation-delay: 0.3s;
+}
+.sparkle:nth-child(3) {
+  background-color: #0000ff;
+  left: 50%;
+  top: 10%;
+  animation-delay: 0.6s;
+}
+.sparkle:nth-child(4) {
+  background-color: #ffff00;
+  left: 70%;
+  top: 20%;
+  animation-delay: 0.9s;
+}
+.sparkle:nth-child(5) {
+  background-color: #ff00ff;
+  left: 90%;
+  top: 10%;
+  animation-delay: 1.2s;
+}
+
+```
 ```javascript
 import React, { useEffect, useState } from "react";
 import {
@@ -97,6 +264,7 @@ const GamificationUI = () => {
       render: (text, record) => (
         <Button
           type="link"
+          style={{ fontSize: "18px", textTransform: "capitalize" }} // Capitalize first letter of each word
           onClick={() => {
             const newExpandedRowKeys = expandedRowKeys.includes(record.agent_id)
               ? expandedRowKeys.filter((key) => key !== record.agent_id)
@@ -114,7 +282,7 @@ const GamificationUI = () => {
       key: "performance_score",
       width: "20%",
       render: (text) => (
-        <span style={{ fontWeight: "bold", fontSize: "18px" }}>{text}</span>
+        <span style={{ fontWeight: "bold", fontSize: "20px" }}>{text}</span> // Increased font size
       ),
     },
     {
@@ -290,173 +458,5 @@ const GamificationUI = () => {
 };
 
 export default GamificationUI;
-
-```
-
-```css
-.header {
-  background-color: #00008b;
-  padding: 20px;
-  text-align: center;
-}
-.header-content {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  height: 100%;
-}
-.ant-table {
-  background: #fff;
-  border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  margin-top: 20px;
-  font-size: 16px;
-}
-.ant-table th {
-  background-color: #00008b;
-  color: white;
-  font-size: 20px; /* Enhanced font size */
-  font-weight: bold;
-  padding: 18px;
-  border-bottom: 2px solid #ddd; /* Added bottom border */
-}
-.ant-table td {
-  padding: 12px;
-  font-size: 18px; /* Enhanced font size */
-  background-color: #f6f6f6;
-  border-bottom: 1px solid #ddd; /* Added bottom border */
-}
-.ant-table tr:hover {
-  background-color: #e6f7ff; /* Light blue on hover */
-}
-.gold-row {
-  background-color: #fffde7;
-}
-.silver-row {
-  background-color: #f3f6f9;
-}
-.bronze-row {
-  background-color: #f9f9f9;
-}
-.ant-badge {
-  font-weight: bold;
-}
-.top-performers {
-  margin-bottom: 20px;
-}
-.top-performers-list {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-}
-.top-performer-card {
-  background-color: #fff;
-  border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  padding: 20px;
-  text-align: center;
-  margin: 10px;
-  width: 220px;
-  transition: transform 0.2s;
-}
-.top-performer-card:hover {
-  transform: scale(1.05);
-}
-.badge-container {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-.gold-badge {
-  color: #ffd700;
-  font-size: 24px;
-  margin-right: 8px;
-}
-.performance-score {
-  display: block;
-  margin: 10px 0;
-}
-.car-progress-container {
-  position: relative;
-  width: 100%;
-  height: 50px;
-  margin: 10px 0;
-}
-.track {
-  background-color: #e0e0e0;
-  border-radius: 15px;
-  overflow: hidden;
-  height: 100%;
-  position: relative;
-}
-.progress-bar {
-  background-color: #1890ff;
-  height: 100%;
-  border-radius: 15px;
-  transition: width 0.5s ease-in-out;
-}
-.progress-text {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  font-weight: bold;
-}
-.top-performer-container {
-  display: flex;
-  justify-content: center;
-  margin-bottom: 20px;
-}
-.sparkle {
-  position: absolute;
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  animation: sparkle 1.5s infinite;
-}
-@keyframes sparkle {
-  0% {
-    opacity: 0;
-    transform: scale(0.5);
-  }
-  50% {
-    opacity: 1;
-    transform: scale(1.2);
-  }
-  100% {
-    opacity: 0;
-    transform: scale(1);
-  }
-}
-.sparkle:nth-child(1) {
-  background-color: #ff0000;
-  left: 10%;
-  top: 10%;
-  animation-delay: 0s;
-}
-.sparkle:nth-child(2) {
-  background-color: #00ff00;
-  left: 30%;
-  top: 20%;
-  animation-delay: 0.3s;
-}
-.sparkle:nth-child(3) {
-  background-color: #0000ff;
-  left: 50%;
-  top: 10%;
-  animation-delay: 0.6s;
-}
-.sparkle:nth-child(4) {
-  background-color: #ffff00;
-  left: 70%;
-  top: 20%;
-  animation-delay: 0.9s;
-}
-.sparkle:nth-child(5) {
-  background-color: #ff00ff;
-  left: 90%;
-  top: 10%;
-  animation-delay: 1.2s;
-}
 
 ```
