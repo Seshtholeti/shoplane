@@ -1,171 +1,3 @@
-```css
-.header {
-  background-color: #00008b;
-  padding: 20px;
-  text-align: center;
-}
-.header-content {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  height: 100%;
-}
-.ant-table {
-  background: #fff;
-  border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  margin-top: 20px;
-  font-size: 16px;
-}
-.ant-table th {
-  background-color: #00008b;
-  color: white;
-  font-size: 20px; /* Enhanced font size */
-  font-weight: bold;
-  padding: 12px; /* Decreased padding for row height */
-  border-bottom: 2px solid #ddd; /* Added bottom border */
-}
-.ant-table td {
-  padding: 8px; /* Decreased padding for row height */
-  font-size: 18px; /* Enhanced font size */
-  background-color: #f6f6f6;
-  border-bottom: 1px solid #ddd; /* Added bottom border */
-}
-.ant-table tr:hover {
-  background-color: #e6f7ff; /* Light blue on hover */
-}
-.gold-row {
-  background-color: #fffde7;
-}
-.silver-row {
-  background-color: #f3f6f9;
-}
-.bronze-row {
-  background-color: #f9f9f9;
-}
-.ant-badge {
-  font-weight: bold;
-}
-.top-performers {
-  margin-bottom: 20px;
-}
-.top-performers-list {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-}
-.top-performer-card {
-  background-color: #fff;
-  border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  padding: 20px;
-  text-align: center;
-  margin: 10px;
-  width: 220px;
-  transition: transform 0.2s;
-}
-.top-performer-card:hover {
-  transform: scale(1.05);
-}
-.badge-container {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-.gold-badge {
-  color: #ffd700;
-  font-size: 24px;
-  margin-right: 8px;
-}
-.performance-score {
-  display: block;
-  margin: 10px 0;
-}
-.car-progress-container {
-  position: relative;
-  width: 100%;
-  height: 50px;
-  margin: 10px 0;
-}
-.track {
-  background-color: #e0e0e0;
-  border-radius: 15px;
-  overflow: hidden;
-  height: 100%;
-  position: relative;
-}
-.progress-bar {
-  background-color: #1890ff;
-  height: 100%;
-  border-radius: 15px;
-  transition: width 0.5s ease-in-out;
-}
-.progress-text {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  font-weight: bold;
-}
-.top-performer-container {
-  display: flex;
-  justify-content: center;
-  margin-bottom: 20px;
-}
-.sparkle {
-  position: absolute;
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  animation: sparkle 1.5s infinite;
-}
-@keyframes sparkle {
-  0% {
-    opacity: 0;
-    transform: scale(0.5);
-  }
-  50% {
-    opacity: 1;
-    transform: scale(1.2);
-  }
-  100% {
-    opacity: 0;
-    transform: scale(1);
-  }
-}
-.sparkle:nth-child(1) {
-  background-color: #ff0000;
-  left: 10%;
-  top: 10%;
-  animation-delay: 0s;
-}
-.sparkle:nth-child(2) {
-  background-color: #00ff00;
-  left: 30%;
-  top: 20%;
-  animation-delay: 0.3s;
-}
-.sparkle:nth-child(3) {
-  background-color: #0000ff;
-  left: 50%;
-  top: 10%;
-  animation-delay: 0.6s;
-}
-.sparkle:nth-child(4) {
-  background-color: #ffff00;
-  left: 70%;
-  top: 20%;
-  animation-delay: 0.9s;
-}
-.sparkle:nth-child(5) {
-  background-color: #ff00ff;
-  left: 90%;
-  top: 10%;
-  animation-delay: 1.2s;
-}
-
-```
-```javascript
 import React, { useEffect, useState } from "react";
 import {
   Table,
@@ -181,6 +13,7 @@ import axios from "axios";
 import TopPerformerCard from "./TopPerformerCard";
 import CarProgress from "./CarProgress";
 import "./GamificationUI.css";
+import img1 from "./img/gold.png";
 
 const { Header, Content } = Layout;
 const { Title, Text } = Typography;
@@ -231,27 +64,33 @@ const GamificationUI = () => {
     let score = 0;
     let feedback = "";
     if (userMetrics.agent_talk_time < targetTalkTime) {
-      feedback += "Increase your agent talk time to improve your performance.\n";
+      feedback +=
+        "Increase your agent talk time to improve your performance.\n";
     } else {
       score += 25;
     }
     if (userMetrics.agent_calls_count < targetCallsCount) {
-      feedback += "Increase your agent calls count to improve your performance.\n";
+      feedback +=
+        "Increase your agent calls count to improve your performance.\n";
     } else {
       score += 25;
     }
     if (userMetrics.customer_sentiments_score < targetCustomerSentiments) {
-      feedback += "Increase your customer sentiments score to improve your performance.\n";
+      feedback +=
+        "Increase your customer sentiments score to improve your performance.\n";
     } else {
       score += 25;
     }
     if (userMetrics.agent_non_talk_time > targetNonTalkTime) {
-      feedback += "Decrease your agent non-talk time to improve your performance.\n";
+      feedback +=
+        "Decrease your agent non-talk time to improve your performance.\n";
     } else {
       score += 25;
     }
     setPoints(points + score);
-    alert(`Congratulations! You earned ${score} points.\n\nFeedback:\n${feedback}`);
+    alert(
+      `Congratulations! You earned ${score} points.\n\nFeedback:\n${feedback}`
+    );
     setIsGameVisible(false);
   };
 
@@ -301,10 +140,10 @@ const GamificationUI = () => {
         <img
           src={
             score > 400
-              ? "path/to/gold-badge.png"
+              ? "src/img/gold.png"
               : score > 300
-              ? "path/to/silver-badge.png"
-              : "path/to/bronze-badge.png"
+              ? "src/img/silver.png"
+              : "src/img/bronze.jiff"
           }
           alt="Badge"
           style={{ width: "40px", height: "40px" }}
@@ -320,7 +159,9 @@ const GamificationUI = () => {
       <div>
         <Text>Agent Sentiments Score: {record.agent_sentiments_score}</Text>
         <br />
-        <Text>Customer Sentiments Score: {record.customer_sentiments_score}</Text>
+        <Text>
+          Customer Sentiments Score: {record.customer_sentiments_score}
+        </Text>
         <br />
         <Text>Agent Talk Time: {record.agent_talk_time}</Text>
         <br />
@@ -459,4 +300,169 @@ const GamificationUI = () => {
 
 export default GamificationUI;
 
-```
+
+
+.header {
+  background-color: #00008b;
+  padding: 20px;
+  text-align: center;
+}
+.header-content {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100%;
+}
+.ant-table {
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  margin-top: 20px;
+  font-size: 16px;
+}
+.ant-table th {
+  background-color: #00008b;
+  color: white;
+  font-size: 20px; /* Enhanced font size */
+  font-weight: bold;
+  padding: 6px; /* Decreased padding for row height */
+  border-bottom: 2px solid #ddd; /* Added bottom border */
+}
+.ant-table td {
+  padding: 8px; /* Decreased padding for row height */
+  font-size: 18px; /* Enhanced font size */
+  background-color: #f6f6f6;
+  border-bottom: 3px solid #0a0101; /* Added bottom border */
+}
+.ant-table tr:hover {
+  background-color: #e6f7ff; /* Light blue on hover */
+}
+.gold-row {
+  background-color: #fffde7;
+}
+.silver-row {
+  background-color: #f3f6f9;
+}
+.bronze-row {
+  background-color: #f9f9f9;
+}
+.ant-badge {
+  font-weight: bold;
+}
+.top-performers {
+  margin-bottom: 20px;
+}
+.top-performers-list {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+.top-performer-card {
+  background-color: #fff;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  padding: 20px;
+  text-align: center;
+  margin: 10px;
+  width: 220px;
+  transition: transform 0.2s;
+}
+.top-performer-card:hover {
+  transform: scale(1.05);
+}
+.badge-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.gold-badge {
+  color: #ffd700;
+  font-size: 24px;
+  margin-right: 8px;
+}
+.performance-score {
+  display: block;
+  margin: 10px 0;
+}
+.car-progress-container {
+  position: relative;
+  width: 100%;
+  height: 50px;
+  margin: 10px 0;
+}
+.track {
+  background-color: #e0e0e0;
+  border-radius: 15px;
+  overflow: hidden;
+  height: 70%;
+  position: relative;
+}
+.progress-bar {
+  background-color: #1890ff;
+  height: 100%;
+  border-radius: 15px;
+  transition: width 0.5s ease-in-out;
+}
+.progress-text {
+  position: absolute;
+  top: 35%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-weight: bold;
+}
+.top-performer-container {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 20px;
+}
+.sparkle {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  animation: sparkle 1.5s infinite;
+}
+@keyframes sparkle {
+  0% {
+    opacity: 0;
+    transform: scale(0.5);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.2);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1);
+  }
+}
+.sparkle:nth-child(1) {
+  background-color: #ff0000;
+  left: 10%;
+  top: 10%;
+  animation-delay: 0s;
+}
+.sparkle:nth-child(2) {
+  background-color: #00ff00;
+  left: 30%;
+  top: 20%;
+  animation-delay: 0.3s;
+}
+.sparkle:nth-child(3) {
+  background-color: #0000ff;
+  left: 50%;
+  top: 10%;
+  animation-delay: 0.6s;
+}
+.sparkle:nth-child(4) {
+  background-color: #ffff00;
+  left: 70%;
+  top: 20%;
+  animation-delay: 0.9s;
+}
+.sparkle:nth-child(5) {
+  background-color: #ff00ff;
+  left: 90%;
+  top: 10%;
+  animation-delay: 1.2s;
+}
