@@ -494,3 +494,48 @@ const TopPerformerCard = ({ agent, showSparkles, onCelebrate }) => {
   );
 };
 export default TopPerformerCard;
+
+
+import React from "react";
+import { useSpring, animated } from "react-spring";
+import "./GamificationUI.css";
+const AnimatedProgress = ({ score }) => {
+  const progress = (score / 400) * 100; // Assuming 400 is the max score
+  const animationProps = useSpring({
+    from: { width: "0%" },
+    to: { width: `${progress}%` },
+    config: { duration: 1000 },
+  });
+  return (
+    <div className="progress-container">
+      <div className="progress-track">
+        <animated.div className="progress-bar" style={animationProps} />
+      </div>
+      <span className="progress-text">{score}</span>
+    </div>
+  );
+};
+export default AnimatedProgress;
+
+
+import React from "react";
+import { useSpring, animated } from "react-spring";
+import "./GamificationUI.css";
+const CarProgress = ({ score }) => {
+  const maxScore = 500; // Maximum score
+  const progress = (score / maxScore) * 100; // Calculate percentage for progress
+  const animationProps = useSpring({
+    to: { width: `${progress}%` },
+    from: { width: "0%" },
+    config: { duration: 1000 },
+  });
+  return (
+    <div className="car-progress-container">
+      <div className="track">
+        <animated.div className="progress-bar" style={animationProps} />
+      </div>
+      <span className="progress-text">{score}</span>
+    </div>
+  );
+};
+export default CarProgress;
