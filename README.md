@@ -1,138 +1,89 @@
-```yaml
 AWSTemplateFormatVersion: 2010-09-09
-Description: Template for Voice-To-Chat Solution with Contact Flow Module
+Description: Template for Voice-To-Chat Solution
 
 Parameters:
   ConnectInstanceArn:
     Type: String
-    Description: "The ARN of the Amazon Connect instance"
-
   LambdaExecutionRole:
     Type: String
-    Description: "The ARN of the IAM role that Lambda functions will assume"
-
   EmailIdentityArn:
     Type: String
-    Description: "The ARN of the email identity used for sending emails"
-
-  ModuleS3Bucket:
+  ContactFlowModuleS3Bucket:
     Type: String
-    Description: "The S3 bucket where the module JSON content is stored"
-
-  ModuleS3Key:
+  ContactFlowModuleS3Key:
     Type: String
-    Description: "The S3 key for the module JSON file"
 
 Resources:
-  VoiceToChatContactFlowModule:
-    Type: "AWS::Connect::ContactFlowModule"
+  ConnectContactFlowModule1:
+    Type: AWS::Connect::ContactFlowModule
     Properties:
-      Name: VoiceToChatFlowModule
-      Description: "Contact flow module created using CloudFormation"
       InstanceArn: !Ref ConnectInstanceArn
+      Name: VoiceToChatFlowModule1
       Content:
-        Fn::Sub: |
-          {
-            "Version": "2019-10-30",
-            "StartAction": "sample-start-action-id",
-            "Metadata": {
-              "entryPointPosition": {"x": 100, "y": 100},
-              "ActionMetadata": {
-                "sample-action-id-1": {"position": {"x": 200, "y": 200}},
-                "sample-action-id-2": {"position": {"x": 300, "y": 300}}
-              },
-              "Annotations": [],
-              "name": "Sample Contact Flow",
-              "description": "",
-              "status": "published",
-              "hash": []
-            },
-            "Actions": [
-              {
-                "Parameters": {"Text": "Welcome to our service!"},
-                "Identifier": "sample-action-id-1",
-                "Type": "MessageParticipant",
-                "Transitions": {
-                  "NextAction": "sample-action-id-2"
-                }
-              },
-              {
-                "Parameters": "",
-                "Identifier": "sample-action-id-2",
-                "Type": "DisconnectParticipant",
-                "Transitions": []
-              }
-            ]
-          }
-      Tags:
-        - Key: testkey
-          Value: testValue
+        Fn::Transform:
+          Name: "AWS::Include"
+          Parameters:
+            Location: !Sub "s3://${ContactFlowModuleS3Bucket}/${ContactFlowModuleS3Key}"
 
-  ContactFlowModuleLambdaFunction:
+  LambdaFunction1:
     Type: AWS::Lambda::Function
     Properties:
-      FunctionName: VoiceToChatContactFlowHandler
+      FunctionName: Voice-to-chat-transfer-unique1
       Handler: index.handler
       Role: !Ref LambdaExecutionRole
       Code:
-        S3Bucket: !Ref ModuleS3Bucket
-        S3Key: !Ref ModuleS3Key
+        S3Bucket: voice-to-chat-lambda-solution
+        S3Key: Voice-to-chat-transfer-2b6ec221-f880-43a1-af57-544ebd835c7b.zip
       Runtime: python3.10
       Timeout: 15
 
-  PinpointAppForModule:
+  PinpointApp1:
     Type: AWS::Pinpoint::App
     Properties:
-      Name: voice-to-chat-module
+      Name: voice-to-chat1
 
-  PinpointEmailChannelForModule:
+  PinpointEmailChannel1:
     Type: AWS::Pinpoint::EmailChannel
     Properties:
-      ApplicationId: !Ref PinpointAppForModule
+      ApplicationId: !Ref PinpointApp1
       FromAddress: ati.pat85@outlook.com
       Identity: !Ref EmailIdentityArn
       RoleArn: !Ref LambdaExecutionRole
 
-  S3Bucket:
+  S3Bucket1:
     Type: AWS::S3::Bucket
     Properties:
-      BucketName: myunique-bucket-name123456
+      BucketName: !Sub "my-unique-bucket-name-${AWS::AccountId}-${AWS::Region}-1"
 
-  CloudFrontDistribution:
+  CloudFrontDistribution1:
     Type: AWS::CloudFront::Distribution
     Properties:
       DistributionConfig:
         Origins:
-          - DomainName: !GetAtt S3Bucket.DomainName
+          - DomainName: !GetAtt S3Bucket1.RegionalDomainName
             Id: S3Origin
             S3OriginConfig: {}
         Enabled: true
         DefaultCacheBehavior:
           TargetOriginId: S3Origin
-          ViewerProtocolPolicy: redirect-to-http
+          ViewerProtocolPolicy: redirect-to-https
           ForwardedValues:
             QueryString: false
         DefaultRootObject: index.html
 
 Outputs:
-  ContactFlowModuleArn:
-    Description: "The ARN of the created contact flow module"
-    Value: !GetAtt VoiceToChatContactFlowModule.Arn
-
-  ContactFlowModuleLambdaFunctionArn:
-    Description: "Contact Flow Module Lambda function ARN"
-    Value: !GetAtt ContactFlowModuleLambdaFunction.Arn
-
-  PinpointAppForModuleId:
-    Description: "Pinpoint app ID for the module"
-    Value: !Ref PinpointAppForModule
-
-  S3BucketName:
+  ConnectContactFlowModuleId1:
+    Description: "Connect contact flow module ID"
+    Value: !Ref ConnectContactFlowModule1
+  LambdaFunctionArn1:
+    Description: "Lambda function ARN"
+    Value: !GetAtt LambdaFunction1.Arn
+  PinpointAppId1:
+    Description: "Pinpoint app ID"
+    Value: !Ref PinpointApp1
+  S3BucketName1:
     Description: "S3 bucket name"
-    Value: !Ref S3Bucket
-
-  CloudFrontDistributionId:
+    Value: !Ref S3Bucket1
+  CloudFrontDistributionId1:
     Description: "CloudFront distribution ID"
-    Value: !Ref CloudFrontDistribution
-
-```
+    Value: !Ref CloudFrontDistribution1
