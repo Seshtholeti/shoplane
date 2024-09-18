@@ -5,14 +5,15 @@ Description: Template for Voice-To-Chat Solution
 Parameters:
   ConnectInstanceArn:
     Type: String
+    Description: "The ARN of the Amazon Connect instance."
+  
   LambdaExecutionRole:
     Type: String
+    Description: "The ARN of the IAM role that Lambda will assume."
+
   EmailIdentityArn:
     Type: String
-  ContactFlowModuleS3Bucket:
-    Type: String
-  ContactFlowModuleS3Key:
-    Type: String
+    Description: "The ARN of the email identity for Amazon Pinpoint."
 
 Resources:
   ConnectContactFlowModule1:
@@ -118,8 +119,6 @@ Resources:
                   }
                 }
               },
-              "Annotations":[],
-
               // Additional Metadata can be added here if needed
 
               // Ensure to close the Metadata object properly.
@@ -128,10 +127,10 @@ Resources:
             “Actions”: [
               {
                 “Parameters”: { “Text”: “lambda error” },
-                “Identifier”: “c3d3116b-4833-414d-85c7-54d7ba28ce0a”,
+                “Identifier”: “c3d3116b–4833–414d–85c7–54d7ba28ce0a”,
                 “Type”: “MessageParticipant”,
                 “Transitions”: { 
-                  “NextAction”: “a4893b51-4ae1-44ba-8127-0ad84b24d220”,
+                  “NextAction”: “a4893b51–4ae1–44ba–8127–0ad84b24d220”,
                   “Errors”: [{“NextAction”: “a4893b51–4ae1–44ba–8127–0ad84b24d220”, “ErrorType”: “NoMatchingError”}]
                 }
               },
@@ -178,12 +177,12 @@ Resources:
   LambdaFunction1:
     Type: AWS::Lambda::Function
     Properties:
-      FunctionName: Voice-to-chat-transfer-unique1
+      FunctionName: Voice-to-chat-transfer
       Handler: index.handler
       Role: !Ref LambdaExecutionRole
       Code:
         S3Bucket: voice-to-chat-lambda-solution
-        S3Key: Voice-to-chat-transfer-2b6ec221-f880-43a1-af57-544ebd835c7b.zip
+        S3Key: Voice-to-chat-transfer.zip # Update with your actual S3 key if necessary.
       Runtime: python3.10
       Timeout: 15
 
@@ -196,30 +195,9 @@ Resources:
     Type: AWS::Pinpoint::EmailChannel
     Properties:
       ApplicationId: !Ref PinpointApp1
-      FromAddress: ati.pat85@outlook.com # Using the same email address as before
+      FromAddress: ati.pat85@outlook.com # Using the same email address as before.
       Identity: !Ref EmailIdentityArn
       RoleArn: !Ref LambdaExecutionRole
-
-  S3Bucket1:
-    Type: AWS::S3::Bucket
-    Properties:
-      BucketName: !Sub 'my-bucket-name-${AWS::AccountId}-${AWS::Region}-1'
-
-  CloudFrontDistribution1:
-    Type: AWS::CloudFront::Distribution
-    Properties:
-      DistributionConfig:
-        Origins:
-          - DomainName: !GetAtt S3Bucket1.RegionalDomainName
-            Id: S3Origin
-            S3OriginConfig: {}
-        Enabled: true
-        DefaultCacheBehavior:
-          TargetOriginId: S3Origin
-          ViewerProtocolPolicy: redirect-to-https
-          ForwardedValues:
-            QueryString: false
-        DefaultRootObject: index.html
 
 Outputs:
   ConnectContactFlowModuleId1:
@@ -234,13 +212,5 @@ Outputs:
     Description: 'Pinpoint app ID'
     Value: !Ref PinpointApp1
   
-  S3BucketName1:
-    Description: 'S3 bucket name'
-    Value: !Ref S3Bucket1
-  
-  CloudFrontDistributionId1:
-    Description: 'CloudFront distribution ID'
-    Value: !Ref CloudFrontDistribution1
-
 
 ```
