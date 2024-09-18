@@ -1,4 +1,3 @@
-```yaml
 AWSTemplateFormatVersion: 2010-09-09
 Description: Template for Voice-To-Chat Solution
 
@@ -6,7 +5,7 @@ Parameters:
   ConnectInstanceArn:
     Type: String
     Description: "The ARN of the Amazon Connect instance."
-  
+
   LambdaExecutionRole:
     Type: String
     Description: "The ARN of the IAM role that Lambda will assume."
@@ -149,19 +148,19 @@ Resources:
   LambdaFunction1:
     Type: AWS::Lambda::Function
     Properties:
-      FunctionName: Voice-to-chat-transfer-lambda001 # Unique name with a number
+      FunctionName: Voice-to-chat-transfer-lambda01 # Unique name with a number
       Handler: index.handler
       Role: !Ref LambdaExecutionRole
       Code:
         S3Bucket: voice-to-chat-lambda-solution
-        S3Key: Voice-to-chat-transfer.zip # Update with your actual S3 key if necessary.
+        S3Key: Voice-to-chat-transfer.zip
       Runtime: python3.10
       Timeout: 15
 
   PinpointApp1:
     Type: AWS::Pinpoint::App
     Properties:
-      Name: voice-to-chat-app001 # Unique name with a number
+      Name: voice-to-chat-app01 # Unique name with a number
 
   PinpointEmailChannel1:
     Type: AWS::Pinpoint::EmailChannel
@@ -173,16 +172,71 @@ Resources:
 
 Outputs:
   ConnectContactFlowModuleId1:
-    Description: 'Connect contact flow module ID'
+    Description: "Connect contact flow module ID"
     Value: !Ref ConnectContactFlowModule1
-  
-  LambdaFunctionArn1:
-    Description: 'Lambda function ARN'
-    Value: !GetAtt LambdaFunction1.Arn
-  
-  PinpointAppId1:
-    Description: 'Pinpoint app ID'
-    Value: !Ref PinpointApp1
-  
 
-```
+  LambdaFunctionArn1:
+    Description: "Lambda function ARN"
+    Value: !GetAtt LambdaFunction1.Arn
+
+  PinpointAppId1:
+    Description: "Pinpoint app ID"
+    Value: !Ref PinpointApp1
+
+
+
+2024-09-18 09:15:43 UTC+0530
+voice-to-chat-model1
+ROLLBACK_COMPLETE
+-
+-
+2024-09-18 09:15:43 UTC+0530
+ConnectContactFlowModule1
+DELETE_COMPLETE
+-
+-
+2024-09-18 09:13:18 UTC+0530
+LambdaFunction1
+DELETE_COMPLETE
+-
+-
+2024-09-18 09:13:13 UTC+0530
+PinpointApp1
+DELETE_COMPLETE
+-
+-
+2024-09-18 09:13:12 UTC+0530
+PinpointApp1
+DELETE_IN_PROGRESS
+-
+-
+2024-09-18 09:13:12 UTC+0530
+LambdaFunction1
+DELETE_IN_PROGRESS
+-
+-
+2024-09-18 09:13:10 UTC+0530
+voice-to-chat-model1
+ROLLBACK_IN_PROGRESS
+-
+The following resource(s) failed to create: [ConnectContactFlowModule1, LambdaFunction1]. Rollback requested by user.
+2024-09-18 09:13:10 UTC+0530
+LambdaFunction1
+CREATE_FAILED
+-
+Resource creation cancelled
+2024-09-18 09:13:09 UTC+0530
+PinpointApp1
+CREATE_COMPLETE
+-
+-
+2024-09-18 09:13:09 UTC+0530
+LambdaFunction1
+CREATE_IN_PROGRESS
+-
+Resource creation Initiated
+2024-09-18 09:13:09 UTC+0530
+ConnectContactFlowModule1
+CREATE_FAILED
+-
+Resource handler returned message: "Service returned error code InvalidContactFlowModuleException (Service: Connect, Status Code: 400, Request ID: 4edb39a7-25d6-4da6-a577-212154e83c1f)" (RequestToken: 8f499604-8765-44a8-2b16-7f40e58b777c, HandlerErrorCode: InvalidRequest)
