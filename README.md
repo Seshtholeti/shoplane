@@ -1,6 +1,5 @@
-```yaml
 AWSTemplateFormatVersion: 2010-09-09
-Description: Template for Very Basic Voice-To-Chat Solution
+Description: Template for Voice-To-Chat Solution
 
 Parameters:
   ConnectInstanceArn:
@@ -9,86 +8,82 @@ Parameters:
     Type: String
   EmailIdentityArn:
     Type: String
+  ContactFlowS3Bucket:
+    Type: String
+  ContactFlowS3Key:
+    Type: String
 
 Resources:
-  ConnectContactFlowModule1:
-    Type: AWS::Connect::ContactFlowModule
+  ConnectContactFlow:
+    Type: AWS::Connect::ContactFlow
     Properties:
       InstanceArn: !Ref ConnectInstanceArn
-      Name: BasicVoiceToChatFlowModule
-      Content:
-        Fn::Sub:
-          - |
-            {
-              "Version": "2019-10-30",
-              "StartAction": "WelcomeAction",
-              "Actions": [
-                {
-                  "Identifier": "WelcomeAction",
-                  "Type": "PlayPrompt",
-                  "Parameters": {
-                    "TextToSpeechVoiceId": "Joanna",
-                    "TextToSpeechContent": "Welcome to our service. Thank you for calling."
-                  },
-                  "Transitions": {
-                    "NextAction": "EndCallAction"
-                  }
-                },
-                {
-                  "Identifier": "EndCallAction",
-                  "Type": "Disconnect",
-                  "Parameters": {}
-                }
-              ]
-            }
-          - {}
+      Name: VoiceToChatFlow
+      Type: CONTACT_FLOW
+      Fn::Transform:
+        Name: "AWS::Include"
+        Parameters:
+          Location: !Sub "s3://${ContactFlowS3Bucket}/${ContactFlowS3Key}"
 
-  LambdaFunction1:
+  LambdaFunction:
     Type: AWS::Lambda::Function
     Properties:
-      FunctionName: BasicVoiceToChatLambdaFunction
+      FunctionName: Voice-to-chat-transfer-unique
       Handler: index.handler
       Role: !Ref LambdaExecutionRole
       Code:
         S3Bucket: voice-to-chat-lambda-solution
-        S3Key: BasicVoiceToChatLambdaCode.zip
+        S3Key: Voice-to-chat-transfer-2b6ec221-f880-43a1-af57-544ebd835c7b.zip
       Runtime: python3.10
       Timeout: 15
 
-  PinpointApp1:
+  PinpointApp:
     Type: AWS::Pinpoint::App
     Properties:
-      Name: BasicVoiceToChatApp
+      Name: voice-to-chat
 
-  PinpointEmailChannel1:
+  PinpointEmailChannel:
     Type: AWS::Pinpoint::EmailChannel
     Properties:
-      ApplicationId: !Ref PinpointApp1
+      ApplicationId: !Ref PinpointApp
       FromAddress: ati.pat85@outlook.com
       Identity: !Ref EmailIdentityArn
       RoleArn: !Ref LambdaExecutionRole
 
-  S3Bucket1:
+  S3Bucket:
     Type: AWS::S3::Bucket
     Properties:
-      BucketName: !Sub "${AWS::AccountId}-basic-voice-to-chat-bucket-${AWS::Region}"
+      BucketName: my-unique-bucket-name12345
+
+  CloudFrontDistribution:
+    Type: AWS::CloudFront::Distribution
+    Properties:
+      DistributionConfig:
+        Origins:
+          - DomainName: !GetAtt S3Bucket.RegionalDomainName
+            Id: S3Origin
+            S3OriginConfig: {}
+        Enabled: true
+        DefaultCacheBehavior:
+          TargetOriginId: S3Origin
+          ViewerProtocolPolicy: redirect-to-https
+          ForwardedValues:
+            QueryString: false
+        DefaultRootObject: index.html
 
 Outputs:
-  ConnectContactFlowModuleId1:
-    Description: Basic contact flow module ID
-    Value: !Ref ConnectContactFlowModule1
-  
-  LambdaFunctionArn1:
-    Description: Lambda function ARN
-    Value: !GetAtt LambdaFunction1.Arn
-  
-  PinpointAppId1:
-    Description: Pinpoint app ID
-    Value: !Ref PinpointApp1
-  
-  S3BucketName1:
-    Description: S3 bucket name
-    Value: !Ref S3Bucket1
-
-
-```
+  ConnectContactFlowId:
+    Description: "Connect contact flow ID"
+    Value: !Ref ConnectContactFlow
+  LambdaFunctionArn:
+    Description: "Lambda function ARN"
+    Value: !GetAtt LambdaFunction.Arn
+  PinpointAppId:
+    Description: "Pinpoint app ID"
+    Value: !Ref PinpointApp
+  S3BucketName:
+    Description: "S3 bucket name"
+    Value: !Ref S3Bucket
+  CloudFrontDistributionId:
+    Description: "CloudFront distribution ID"
+    Value: !Ref CloudFrontDistribution
