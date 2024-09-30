@@ -1,4 +1,4 @@
-AWSTemplateFormatVersion: 2010-09-09
+AWSTemplateFormatVersion: "2010-09-09"
 Description: Template for Voice-To-Chat Solution Module
 Parameters:
   ConnectInstanceArn:
@@ -11,17 +11,6 @@ Parameters:
     Type: String
     Description: ARN of the email identity for Pinpoint
 Resources:
-  # Contact Flow Module Resource
-  ConnectContactFlowModule:
-    Type: AWS::Connect::ContactFlowModule
-    Properties:
-      InstanceArn: !Ref ConnectInstanceArn
-      Name: VoiceToChatFlowModule
-      Fn::Transform:
-        Name: "AWS::Include"
-        Parameters:
-          Location: s3://v2chat-json/vchat.json
-  # Lambda Function Resource
   VoiceToChatLambdaFunction:
     Type: AWS::Lambda::Function
     Properties:
@@ -30,15 +19,20 @@ Resources:
       Role: !Ref LambdaExecutionRole
       Code:
         S3Bucket: voice-to-chat-lambda-solution
-        S3Key: Voice-to-chat-transfer-2b6ec221-f880-43a1-af57-544ebd835c7b.zip
+        S3Key: Voice-to-chat-transfer.zip
       Runtime: python3.10
       Timeout: 15
-  # Pinpoint Application Resource
+  ConnectContactFlowModule:
+    Type: AWS::Connect::ContactFlowModule
+    Properties:
+      InstanceArn: !Ref ConnectInstanceArn
+      Name: VoiceToChatFlowModule
+      Content: |
+
   PinpointApp:
     Type: AWS::Pinpoint::App
     Properties:
       Name: VoiceToChatApp
-  # Pinpoint Email Channel Resource
   PinpointEmailChannel:
     Type: AWS::Pinpoint::EmailChannel
     Properties:
@@ -46,12 +40,10 @@ Resources:
       FromAddress: ati.pat85@outlook.com
       Identity: !Ref EmailIdentityArn
       RoleArn: !Ref LambdaExecutionRole
-  # S3 Bucket Resource for storage
   S3BucketForContactFlows:
     Type: AWS::S3::Bucket
     Properties:
-      BucketName: my-unique-bucket-name-voice-to-chat
-  # CloudFront Distribution Resource for serving content securely
+      BucketName: my-unique-bucket-name-for-contact-flows
   CloudFrontDistribution:
     Type: AWS::CloudFront::Distribution
     Properties:
@@ -60,33 +52,23 @@ Resources:
           - DomainName: !GetAtt S3BucketForContactFlows.RegionalDomainName
             Id: S3OriginForContactFlows
             S3OriginConfig: {}
-        Enabled: true
-        DefaultCacheBehavior:
-          TargetOriginId: S3OriginForContactFlows
-          ViewerProtocolPolicy: redirect-to-https
-          ForwardedValues:
-            QueryString: false
-        DefaultRootObject: index.html
 Outputs:
-  ConnectContactFlowModuleId:
-    Description: "Connect contact flow module ID"
-    Value: !Ref ConnectContactFlowModule
   LambdaFunctionArn:
-    Description: "Lambda function ARN"
+    Description: ARN of the Lambda Function
     Value: !GetAtt VoiceToChatLambdaFunction.Arn
+  ConnectContactFlowModuleArn:
+    Description: ARN of the Connect Contact Flow Module
+    Value: !Ref ConnectContactFlowModule
   PinpointAppId:
-    Description: "Pinpoint app ID"
+    Description: ID of the Pinpoint Application
     Value: !Ref PinpointApp
-  S3BucketName:
-    Description: "S3 bucket name for contact flows"
+  VoiceRecordingBucketName:
+    Description: Name of the S3 Bucket for Voice Recordings
     Value: !Ref S3BucketForContactFlows
-  CloudFrontDistributionId:
-    Description: "CloudFront distribution ID"
-    Value: !Ref CloudFrontDistribution
 
+this is the template file,  below is the JSON data to be added inside the content.
 
-
-  {
+{
   "Version": "2019-10-30",
   "StartAction": "1ff34355-4c6a-42fb-8e71-627d4ffcde6a",
   "Metadata": {
@@ -422,3 +404,7 @@ Outputs:
     ]
   }
 }
+
+also, the function name we are invoking in the module should be function which we are creating which is VoiceToChatTransferFunction. first the function has to be created and later that function should be used in the mmodule, instead of the one which is already there.
+
+please write all the services do not miss anything, write all the parameters and settings in the json . do not miss anything
