@@ -8,13 +8,21 @@ Parameters:
   EmailIdentityArn:
     Type: String
     Description: ARN of the email identity for Pinpoint
+  ConnectModuleName:
+    Type: String
+    Description: Name for the connect contact flow module.
+    Default: "VoiceToChatFlow"
+  LambdaFunctionName:
+    Type: String
+    Description: Name for the Lambda Function.
+    Default: "MyLambdaFunction"
 
 Resources:
   # Lambda Function for Voice to Chat Transfer
   VoiceToChatLambdaFunction:
     Type: AWS::Lambda::Function
     Properties:
-      FunctionName: VoiceToChatTransferFunction
+      FunctionName: !Ref LambdaFunctionName
       Handler: index.handler
       Role: !GetAtt LambdaExecutionRole.Arn
       Code:
@@ -60,13 +68,19 @@ Resources:
                   - pinpoint:SendMessages
                 Resource: "*"
 
-  # Contact Flow Module for Amazon Connect
+  ConnectLambdaAssociation:
+    Type: AWS::Connect::Instance
+    Properties:
+      InstanceArn: !Ref ConnectInstanceArn
+      LambdaFunctionAssociations:
+        - LambdaArn: !Ref MyLambdaFunction
+  Contact Flow Module for Amazon Connect
   ConnectContactFlowModule:
     Type: AWS::Connect::ContactFlowModule
     Properties:
       InstanceArn: !Ref ConnectInstanceArn
-      Name: VoiceToChatFlowModule
-      Content: |
+      Name: !Ref ConnectModuleName
+      Content: !Sub |
         {
           "Version": "2019-10-30",
           "StartAction": "1ff34355-4c6a-42fb-8e71-627d4ffcde6a",
@@ -101,8 +115,8 @@ Resources:
                 },
                 "parameters": {
                   "LambdaFunctionARN": {
-                    "displayName": "VoiceToChatLambdaFunction",
-                    "value": "!GetAtt VoiceToChatLambdaFunction.Arn"
+                    "displayName": "${LambdaFunctionName}",
+                    "value": "!GetAtt MyLambdaFunction.Arn"
                   }
                 },
                 "dynamicMetadata": {
@@ -162,8 +176,8 @@ Resources:
                 },
                 "parameters": {
                   "LambdaFunctionARN": {
-                    "displayName": "VoiceToChatLambdaFunction",
-                    "value": "!GetAtt VoiceToChatLambdaFunction.Arn"
+                    "displayName": "${LambdaFunctionName}",
+                    "value": "!GetAtt MyLambdaFunction.Arn"
                   }
                 },
                 "dynamicMetadata": {
@@ -493,3 +507,6 @@ Outputs:
 #   VoiceRecordingBucketName:
 #     Description: Name of the S3 Bucket for Voice Recordings
 #     Value: !Ref S3BucketForContactFlows
+
+
+this is the error I am getting
