@@ -1,3 +1,107 @@
+
+Timestamp
+	
+Logical ID
+	
+Status
+	
+Detailed status
+	
+Status reason
+
+2024-10-03 12:22:33 UTC+0530
+testCreateCF4
+ROLLBACK_COMPLETE
+-
+-
+2024-10-03 12:22:33 UTC+0530
+LambdaExecutionRole
+DELETE_COMPLETE
+-
+-
+2024-10-03 12:22:33 UTC+0530
+S3BucketForContactFlows
+DELETE_COMPLETE
+-
+-
+2024-10-03 12:22:33 UTC+0530
+ConnectContactFlowModule
+DELETE_COMPLETE
+-
+-
+2024-10-03 12:22:33 UTC+0530
+PinpointApp
+DELETE_COMPLETE
+-
+-
+2024-10-03 12:22:32 UTC+0530
+AllowConnectToLambdaFunctionNameLambda
+DELETE_COMPLETE
+-
+-
+2024-10-03 12:22:32 UTC+0530
+PinpointApp
+DELETE_IN_PROGRESS
+-
+-
+2024-10-03 12:22:31 UTC+0530
+S3BucketForContactFlows
+DELETE_IN_PROGRESS
+-
+-
+2024-10-03 12:22:31 UTC+0530
+ConnectContactFlowModule
+DELETE_IN_PROGRESS
+-
+-
+2024-10-03 12:22:31 UTC+0530
+AllowConnectToLambdaFunctionNameLambda
+DELETE_IN_PROGRESS
+-
+-
+2024-10-03 12:22:31 UTC+0530
+LambdaExecutionRole
+DELETE_IN_PROGRESS
+-
+-
+2024-10-03 12:22:29 UTC+0530
+testCreateCF4
+ROLLBACK_IN_PROGRESS
+-
+The following resource(s) failed to create: [LambdaExecutionRole, S3BucketForContactFlows, AllowConnectToLambdaFunctionNameLambda]. Rollback requested by user.
+2024-10-03 12:22:29 UTC+0530
+S3BucketForContactFlows
+CREATE_FAILED
+-
+Resource creation cancelled
+2024-10-03 12:22:29 UTC+0530
+LambdaExecutionRole
+CREATE_FAILED
+-
+Resource creation cancelled
+2024-10-03 12:22:29 UTC+0530
+ConnectContactFlowModule
+CREATE_COMPLETE
+-
+-
+2024-10-03 12:22:29 UTC+0530
+PinpointApp
+CREATE_COMPLETE
+-
+-
+2024-10-03 12:22:29 UTC+0530
+PinpointApp
+CREATE_IN_PROGRESS
+-
+Resource creation Initiated
+2024-10-03 12:22:29 UTC+0530
+AllowConnectToLambdaFunctionNameLambda
+CREATE_FAILED
+-
+Resource handler returned message: "Function not found: arn:aws:lambda:us-east-1:768637739934:function:MyLambdaFunction (Service: Lambda, Status Code: 404, Request ID: a5bb87d2-fe78-4166-a8ec-de223e8a3b4b)" (RequestToken: 014f9fe6-16cf-90f8-3b22-e67f0dfe28eb, HandlerErrorCode: NotFound)
+
+below is the template.
+
 AWSTemplateFormatVersion: "2010-09-09"
 Description: Template for Voice-To-Chat Solution Module
 
@@ -68,13 +172,34 @@ Resources:
                   - pinpoint:SendMessages
                 Resource: "*"
 
-    # Lambda and Amazon Connect Integration
-  ConnectLambdaAssociation:
-    Type: AWS::Connect::InstanceLambdaFunctionAssociation
+  # ConnectLambdaAssociation:
+  #   Type: AWS::Connect::LambdaFunctionAssociation
+  #   Properties:
+  #     InstanceArn: !Ref ConnectInstanceArn
+  #     LambdaArn: !Ref MyLambdaFunction
+  # allowConnectToLambdaFunctionNameLambda:
+  #   Type: "AWS::Lambda::Permission"
+  #   Properties:
+  #     FunctionName: !Ref LambdaFunctionName
+  #     Action: "lambda:InvokeFunction"
+  #     Principal: connect.amazonaws.com
+  #     SourceAccount: "768637739934" #!Ref 'AWS::AccountId'
+  # InstanceArn: !Ref ConnectInstanceArn
+  AllowConnectToLambdaFunctionNameLambda:
+    Type: "AWS::Lambda::Permission"
     Properties:
-      InstanceArn: !Ref ConnectInstanceArn
-      FunctionArn: !GetAtt VoiceToChatLambdaFunction.Arn
-      TriggerEventSource: CONTACT_FLOW
+      FunctionName: !Ref LambdaFunctionName
+      Action: "lambda:InvokeFunction"
+      Principal: connect.amazonaws.com
+      SourceAccount: "768637739934" #!Ref 'AWS::AccountId'
+      # InstanceArn: !Ref ConnectInstanceArn
+  # ConnectLambdaIntegration:
+  #   Type: AWS::Connect::IntegrationAssociation
+  #   Properties:
+  #     InstanceId: !Ref ConnectInstanceArn
+  #     IntegrationArn: !GetAtt MyLambdaFunction.Arn
+  #     IntegrationType: LAMBDA
+
   # Contact Flow Module for Amazon Connect
   ConnectContactFlowModule:
     Type: AWS::Connect::ContactFlowModule
@@ -510,4 +635,3 @@ Outputs:
 #     Value: !Ref S3BucketForContactFlows
 
 
-this is the error
