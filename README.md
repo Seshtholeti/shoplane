@@ -30,6 +30,10 @@ Resources:
         S3Key: Voice-to-chat-transfer-2b6ec221-f880-43a1-af57-544ebd835c7b.zip
       Runtime: python3.10
       Timeout: 15
+      Environment:
+        Variables:
+          transcriptionFunction: "sesh"
+          table_name: !Ref ConnectInstanceArn
 
   # Lambda Execution Role for VoiceToChatTransferFunction
   LambdaExecutionRole:
@@ -68,7 +72,20 @@ Resources:
                   - pinpoint:SendMessages
                 Resource: "*"
 
+  # ConnectLambdaAssociation:
+  #   Type: AWS::Connect::Instance
+  #   Properties:
+  #     InstanceArn: !Ref ConnectInstanceArn
+  #     LambdaFunctionAssociations:
+  #       - LambdaArn: !GetAtt VoiceToChatLambdaFunction.Arn
   # Contact Flow Module for Amazon Connect
+  IntegrationAssociation:
+    Type: AWS::Connect::IntegrationAssociation
+    Properties:
+      InstanceId: !Ref ConnectInstanceArn
+      IntegrationType: LAMBDA_FUNCTION
+      IntegrationArn: !GetAtt VoiceToChatLambdaFunction.Arn
+
   ConnectContactFlowModule:
     Type: AWS::Connect::ContactFlowModule
     Properties:
