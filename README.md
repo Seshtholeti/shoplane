@@ -16,6 +16,12 @@ Parameters:
     Type: String
     Description: Name for the Lambda Function.
     Default: "MyLambdaFunction"
+  PrivateKey:
+    Type: String
+    Description: Key for Private Key.
+  PublicKeyId:
+    Type: String
+    Description: Key for Public Key.
 
 Resources:
   # Lambda Function for Voice to Chat Transfer
@@ -27,13 +33,15 @@ Resources:
       Role: !GetAtt LambdaExecutionRole.Arn
       Code:
         S3Bucket: voice-to-chat-lambda-solution
-        S3Key: Voice-to-chat-transfer-2b6ec221-f880-43a1-af57-544ebd835c7b.zip
+        S3Key: newVoicetochat.zip
       Runtime: python3.10
       Timeout: 15
       Environment:
         Variables:
-          transcriptionFunction: "sesh"
-          table_name: !Ref ConnectInstanceArn
+          applicationId: !Ref PinpointApp
+          domainName: !GetAtt CloudFrontDistribution.DomainName
+          privateKey: !Ref PrivateKey
+          publicKeyId: !Ref PublicKeyId
 
   # Lambda Execution Role for VoiceToChatTransferFunction
   LambdaExecutionRole:
