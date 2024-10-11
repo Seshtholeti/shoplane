@@ -1,3 +1,36 @@
+UTC+0530
+PinpointSMSChannel
+DELETE_IN_PROGRESS
+-
+-
+2024-10-11 13:08:46 UTC+0530
+ConnectContactFlowModule
+DELETE_IN_PROGRESS
+-
+-
+2024-10-11 13:08:44 UTC+0530
+testCreateCF3
+ROLLBACK_IN_PROGRESS
+-
+The following resource(s) failed to create: [MyS3BucketPolicy]. Rollback requested by user.
+2024-10-11 13:08:44 UTC+0530
+MyS3BucketPolicy
+CREATE_FAILED
+-
+Resource handler returned message: "Missing required field Action (Service: S3, Status Code: 400, Request ID: HJKT0QPCM15CFP6D, Extended Request ID: wV5Lti7WMNEmEN/LzjNDnIe3zDdnclNDk9UYhP//GYmBdUJZK+/huueYJUv/FRFZubf1y/njCzA=)" (RequestToken: bf6a05a1-78c0-870d-4073-c2dd0d8dae85, HandlerErrorCode: GeneralServiceException)
+
+
+this is the error I am getting
+
+
+
+
+
+
+
+
+
+
 AWSTemplateFormatVersion: "2010-09-09"
 Description: Template for Voice-To-Chat Solution Module
 
