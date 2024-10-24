@@ -75,7 +75,7 @@ async function getHistoricalMetrics() {
 }
 
 // Handler function to call both APIs and return all metrics
-export async function handler(event, context) {
+async function handler(event, context) {
     try {
         const currentMetrics = await getCurrentMetrics();
         const historicalMetrics = await getHistoricalMetrics();
