@@ -1,49 +1,38 @@
-import { ConnectClient, ListQueuesCommand, ListUsersCommand, GetCurrentMetricDataCommand, GetMetricDataV2Command } from "@aws-sdk/client-connect";
+import { ConnectClient, ListQueuesCommand, GetCurrentMetricDataCommand, GetMetricDataV2Command } from "@aws-sdk/client-connect";
+
 const client = new ConnectClient({ region: 'us-east-1' });
-// Function to fetch queues dynamically using ListQueues
+// Function to fetch queues dynamically using list queues
 async function getQueues() {
-   const input = { InstanceId: process.env.InstanceId };
+   const input = {
+       InstanceId: process.env.InstanceId, 
+       
+   };
    try {
        const command = new ListQueuesCommand(input);
        const data = await client.send(command);
        const queueIds = data.QueueSummaryList.map(queue => queue.Id);
-    //   // Limit to a maximum of 10 queues to prevent filter issues
-    //   const limitedQueueIds = queueIds.slice(0, 10);
-    //   console.log("Fetched and limited Queues:", limitedQueueIds);
-    //   return limitedQueueIds;
-    console.log("Fetched Queues:", queueIds);
-       return queueIds; 
+       console.log("Fetched Queues:", queueIds);
+       return queueIds;
    } catch (err) {
        console.error("Error fetching queues:", err);
        throw err;
    }
 }
-// Function to fetch agents dynamically using ListUsers
-async function getAgents() {
-   const input = { InstanceId: process.env.InstanceId };
-   try {
-       const command = new ListUsersCommand(input);
-       const data = await client.send(command);
-       const agentIds = data.UserSummaryList.map(user => user.Id);
-       // Limit to a maximum of 10 agents 
-       const limitedAgentIds = agentIds.slice(0, 10);
-       console.log("Fetched and limited Agents:", limitedAgentIds);
-       return limitedAgentIds;
-   } catch (err) {
-       console.error("Error fetching agents:", err);
-       throw err;
-   }
-}
 // Fetch real-time metrics
 async function getCurrentMetrics() {
+   const currentTime = new Date();
+   const endTime = Math.floor(currentTime.getTime() / 1000);
+   const startTime = new Date(currentTime.getTime() - (30 * 24 * 60 * 60 * 1000));
+   const unixStartTimestamp = Math.floor(startTime.getTime() / 1000);
+   console.log("Start time:", unixStartTimestamp);
+   console.log("End time:", endTime);
+   // Fetch queues dynamically
    const queues = await getQueues();
-   const agents = await getAgents();
    const input = {
        InstanceId: process.env.InstanceId,
        Filters: {
            Channels: ['VOICE'],
            Queues: queues,
-           Agents: agents,
        },
        CurrentMetrics: [
            { Name: "AGENTS_AFTER_CONTACT_WORK", Unit: "COUNT" },
@@ -66,16 +55,32 @@ async function getCurrentMetrics() {
 }
 // Fetch historical metrics
 async function getHistoricalMetrics() {
+   const currentTime = new Date();
+   const roundedMinutes = Math.floor(currentTime.getMinutes() / 5) * 5;
+   const startTime = new Date(currentTime.getFullYear(), currentTime.getMonth(), currentTime.getDate(), currentTime.getHours(), roundedMinutes);
+   const unixStartTimestamp = Math.floor(startTime.getTime() / 1000);
+   const endTime = new Date(startTime.getTime() - (120 * 60 * 1000)); // Last 2 hours
+   const unixEndTimestamp = Math.floor(endTime.getTime() / 1000);
+   console.log("Historical start time:", unixStartTimestamp);
+   console.log("Historical end time:", unixEndTimestamp);
+   // Fetch queues dynamically
    const queues = await getQueues();
-   const agents = await getAgents();
    const input = {
        ResourceArn: process.env.ResourceArn,
-       StartTime: new Date(Date.now() - (120 * 60 * 1000)), // 2 hours ago
-       EndTime: new Date(),
+       StartTime: new Date(unixEndTimestamp * 1000),
+       EndTime: new Date(unixStartTimestamp * 1000),
        Metrics: [
-           { Name: "SUM_CONTACTS_ABANDONED_IN_X", Threshold: [{ Comparison: "LT", ThresholdValue: 7200 }] },
-           { Name: "SUM_CONTACTS_ANSWERED_IN_X", Threshold: [{ Comparison: "LT", ThresholdValue: 7200 }] },
-           { Name: "ABANDONMENT_RATE", Unit: "COUNT" },
+           {
+               Name: "SUM_CONTACTS_ABANDONED_IN_X",
+               Threshold: [{ Comparison: "LT", ThresholdValue: 7200 }],
+           },
+           {
+               Name: "SUM_CONTACTS_ANSWERED_IN_X",
+               Threshold: [{ Comparison: "LT", ThresholdValue: 7200 }],
+           },
+           {
+               Name: "ABANDONMENT_RATE", Unit: "COUNT"
+           },
            { Name: "AGENT_ANSWER_RATE" },
            { Name: "CONTACTS_HANDLED" },
            { Name: "MAX_QUEUED_TIME" },
@@ -83,7 +88,6 @@ async function getHistoricalMetrics() {
        ],
        Filters: [
            { FilterKey: "QUEUE", FilterValues: queues },
-           { FilterKey: "AGENT", FilterValues: agents },
        ],
    };
    try {
