@@ -1,4 +1,4 @@
-import { ConnectClient, ListQueuesCommand, GetCurrentMetricDataCommand, GetMetricDataV2Command } from "@aws-sdk/client-connect";
+import { ConnectClient, ListQueuesCommand,ListUsersCommand, GetCurrentMetricDataCommand, GetMetricDataV2Command } from "@aws-sdk/client-connect";
 
 const client = new ConnectClient({ region: 'us-east-1' });
 
@@ -19,6 +19,21 @@ async function getQueues() {
     }
 }
 
+// // Function to fetch agents dynamically using ListUsers
+async function getAgents() {
+    const input = { InstanceId: process.env.InstanceId };
+    try {
+        const command = new ListUsersCommand(input);
+        const data = await client.send(command);
+        const agentIds = data.UserSummaryList.map(user => user.Id);
+        console.log("Fetched Agents:", agentIds);
+        return agentIds.slice(0, 10); // Limiting to a maximum of 10 agents
+    } catch (err) {
+        console.error("Error fetching agents:", err);
+        throw err;
+    }
+}
+
 // Fetch real-time metrics for each day over one month
 async function getCurrentMetrics() {
     const currentTime = new Date();
@@ -29,6 +44,7 @@ async function getCurrentMetrics() {
     console.log("Fetching daily real-time metrics from:", startDate.toISOString(), "to", endDate.toISOString());
 
     const queues = await getQueues();
+    const agents = await getAgents();
     const dailyRealTimeMetrics = [];
 
     // Loop through each day in the range
@@ -42,6 +58,7 @@ async function getCurrentMetrics() {
             Filters: {
                 Channels: ['VOICE'],
                 Queues: queues,
+                Agents: agents,
             },
             CurrentMetrics: [
                 { Name: "AGENTS_AFTER_CONTACT_WORK", Unit: "COUNT" },
@@ -81,6 +98,7 @@ async function getHistoricalMetrics() {
     console.log("Fetching daily historical metrics from:", startDate.toISOString(), "to", endDate.toISOString());
 
     const queues = await getQueues();
+    const agents = await getAgents();
     const dailyHistoricalMetrics = [];
 
     for (let date = new Date(startDate); date <= endDate; date.setDate(date.getDate() + 1)) {
@@ -103,6 +121,7 @@ async function getHistoricalMetrics() {
             ],
             Filters: [
                 { FilterKey: "QUEUE", FilterValues: queues },
+                { FilterKey: "Agents", FilterValues: agents },
             ],
         };
 
@@ -160,3 +179,5 @@ function convertToObject(data) {
 }
 
 export { handler, getCurrentMetrics, getHistoricalMetrics };
+
+
