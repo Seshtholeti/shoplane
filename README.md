@@ -1,8 +1,13 @@
-import { ConnectClient, ListQueuesCommand, ListUsersCommand, GetCurrentMetricDataCommand } from "@aws-sdk/client-connect";
+import { 
+    ConnectClient, 
+    ListQueuesCommand, 
+    ListUsersCommand, 
+    GetCurrentMetricDataCommand 
+} from "@aws-sdk/client-connect";
 
 const client = new ConnectClient({ region: 'us-east-1' });
 
-// Function to fetch queues dynamically using ListQueues
+// Function to fetch queues dynamically
 async function getQueues() {
     const input = { InstanceId: process.env.InstanceId };
     try {
@@ -17,7 +22,7 @@ async function getQueues() {
     }
 }
 
-// Function to fetch agents dynamically using ListUsers
+// Function to fetch agents dynamically
 async function getAgents() {
     const input = { InstanceId: process.env.InstanceId };
     try {
@@ -25,7 +30,7 @@ async function getAgents() {
         const data = await client.send(command);
         const agentIds = data.UserSummaryList.map(user => user.Id);
         console.log("Fetched Agents:", agentIds);
-        return agentIds.slice(0, 10); // Limiting to a maximum of 10 agents
+        return agentIds.slice(0, 10); // Limiting to 10 agents
     } catch (err) {
         console.error("Error fetching agents:", err);
         throw err;
@@ -33,7 +38,7 @@ async function getAgents() {
 }
 
 // Fetch real-time metrics
-async function getRealTimeMetrics() {
+async function getCurrentMetrics() {
     const queues = await getQueues();
     const agents = await getAgents();
 
@@ -45,49 +50,45 @@ async function getRealTimeMetrics() {
             Agents: agents,
         },
         CurrentMetrics: [
-            { Name: "AGENTS_AFTER_CONTACT_WORK", Unit: "COUNT" },
-            { Name: "AGENTS_ON_CALL", Unit: "COUNT" },
-            { Name: "AGENTS_AVAILABLE", Unit: "COUNT" },
             { Name: "AGENTS_ONLINE", Unit: "COUNT" },
-            { Name: "AGENTS_STAFFED", Unit: "COUNT" },
             { Name: "CONTACTS_IN_QUEUE", Unit: "COUNT" },
+            { Name: "AGENTS_AVAILABLE", Unit: "COUNT" },
         ],
     };
 
     try {
         const command = new GetCurrentMetricDataCommand(input);
         const data = await client.send(command);
-        const metricsObject = convertToObject(data);
 
-        const response = {
-            queueMetrics: metricsObject.filter(metric => queues.includes(metric.Queue)),
-            agentMetrics: metricsObject.filter(metric => agents.includes(metric.Agent)),
-        };
-        console.log("Real-time Metrics:", response);
-        return response;
+        const metrics = data.MetricResults.map(result => {
+            return {
+                metric: result.Metric.Name,
+                value: result.Collections[0].Value,
+            };
+        });
+        return metrics;
     } catch (err) {
         console.error("Error fetching real-time metrics:", err);
         throw err;
     }
 }
 
-// Function to convert API response into a clean object
-function convertToObject(data) {
-    const result = [];
-    if (data && data.MetricResults) {
-        for (const resultItem of data.MetricResults) {
-            const metrics = resultItem.Collections.map(metric => ({
-                MetricName: metric.Metric.Name,
-                Value: metric.Value,
-            }));
-            result.push({
-                Queue: resultItem.Queue ? resultItem.Queue.Id : null,
-                Agent: resultItem.Agent ? resultItem.Agent.Id : null,
-                Metrics: metrics,
-            });
-        }
+// Handler function for real-time metrics
+async function handlerRealTimeMetrics(event, context) {
+    try {
+        const metrics = await getCurrentMetrics();
+        console.log("Real-Time Metrics:", metrics);
+        return {
+            statusCode: 200,
+            body: JSON.stringify(metrics),
+        };
+    } catch (err) {
+        console.error("Handler Error:", err);
+        return {
+            statusCode: 500,
+            body: JSON.stringify({ error: "Failed to fetch real-time metrics" }),
+        };
     }
-    return result;
 }
 
-export { getRealTimeMetrics };
+export { handlerRealTimeMetrics };
