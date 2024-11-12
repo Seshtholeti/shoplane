@@ -1,163 +1,350 @@
-import { ConnectClient, ListQueuesCommand, ListUsersCommand, GetCurrentMetricDataCommand, GetMetricDataV2Command } from "@aws-sdk/client-connect";
+import { ConnectClient, ListQueuesCommand,ListUsersCommand, GetCurrentMetricDataCommand, GetMetricDataV2Command } from "@aws-sdk/client-connect";
+
 const client = new ConnectClient({ region: 'us-east-1' });
+
 // Function to fetch queues dynamically using list queues
 async function getQueues() {
-   const input = {
-       InstanceId: process.env.InstanceId,
-   };
-   try {
-       const command = new ListQueuesCommand(input);
-       const data = await client.send(command);
-       const queueIds = data.QueueSummaryList.map(queue => queue.Id);
-       console.log("Fetched Queues:", queueIds);
-       return queueIds;
-   } catch (err) {
-       console.error("Error fetching queues:", err);
-       throw err;
-   }
+    const input = {
+         InstanceId: process.env.InstanceId,
+    };
+    try {
+         const command = new ListQueuesCommand(input);
+         const data = await client.send(command);
+         const queueIds = data.QueueSummaryList.map(queue => queue.Id);
+         console.log("Fetched Queues:", queueIds);
+         return queueIds;
+    } catch (err) {
+         console.error("Error fetching queues:", err);
+         throw err;
+    }
 }
-// Function to fetch agents dynamically using ListUsers
+
+// // Function to fetch agents dynamically using ListUsers
 async function getAgents() {
-   const input = { InstanceId: process.env.InstanceId };
-   try {
-       const command = new ListUsersCommand(input);
-       const data = await client.send(command);
-       const agentIds = data.UserSummaryList.map(user => user.Id);
-       console.log("Fetched Agents:", agentIds);
-       return agentIds.slice(0, 10); // Limiting to a maximum of 10 agents
-   } catch (err) {
-       console.error("Error fetching agents:", err);
-       throw err;
-   }
+    const input = { InstanceId: process.env.InstanceId };
+    try {
+         const command = new ListUsersCommand(input);
+         const data = await client.send(command);
+         const agentIds = data.UserSummaryList.map(user => user.Id);
+         console.log("Fetched Agents:", agentIds);
+         return agentIds.slice(0, 10); // Limiting to a maximum of 10 agents
+    } catch (err) {
+         console.error("Error fetching agents:", err);
+         throw err;
+    }
 }
+
 // Fetch real-time metrics for each day over one month
 async function getCurrentMetrics() {
-   const currentTime = new Date();
-   const endDate = new Date(currentTime);
-   const startDate = new Date();
-   startDate.setMonth(startDate.getMonth() - 1);
-   console.log("Fetching daily real-time metrics from:", startDate.toISOString(), "to", endDate.toISOString());
-   const queues = await getQueues();
-   const agents = await getAgents();
-   const dailyRealTimeMetrics = [];
-   // Loop through each day in the range
-   for (let date = new Date(startDate); date <= endDate; date.setDate(date.getDate() + 1)) {
-       const startTime = new Date(date);
-       const endTime = new Date(date);
-       endTime.setHours(23, 59, 59, 999);
-       const input = {
-           InstanceId: process.env.InstanceId,
-           Filters: {
-               Channels: ['VOICE'],
-               Queues: queues,
-               Agents: agents,
-           },
-           CurrentMetrics: [
-               { Name: "AGENTS_AFTER_CONTACT_WORK", Unit: "COUNT" },
-               { Name: "AGENTS_ON_CALL", Unit: "COUNT" },
-               { Name: "AGENTS_AVAILABLE", Unit: "COUNT" },
-               { Name: "AGENTS_ONLINE", Unit: "COUNT" },
-               { Name: "AGENTS_STAFFED", Unit: "COUNT" },
-               { Name: "CONTACTS_IN_QUEUE", Unit: "COUNT" },
-           ],
-       };
-       try {
-           const command = new GetCurrentMetricDataCommand(input);
-           const data = await client.send(command);
-           const metricsObject = convertToObject(data);
-           dailyRealTimeMetrics.push({
-               date: startTime.toISOString().split('T')[0],
-               metrics: metricsObject,
-           });
-           console.log(`Real-time Metrics for ${startTime.toISOString().split('T')[0]}:`, metricsObject);
-       } catch (err) {
-           console.error(`Error fetching real-time metrics for ${startTime.toISOString().split('T')[0]}:`, err);
-       }
-   }
-   return dailyRealTimeMetrics;
+    const currentTime = new Date();
+    const endDate = new Date(currentTime);
+    const startDate = new Date();
+    startDate.setMonth(startDate.getMonth() - 1);
+
+    console.log("Fetching daily real-time metrics from:", startDate.toISOString(), "to", endDate.toISOString());
+
+    const queues = await getQueues();
+    const agents = await getAgents();
+    const dailyRealTimeMetrics = [];
+
+    // Loop through each day in the range
+    for (let date = new Date(startDate); date <= endDate; date.setDate(date.getDate() + 1)) {
+         const startTime = new Date(date);
+         const endTime = new Date(date);
+         endTime.setHours(23, 59, 59, 999);
+
+         const input = {
+            InstanceId: process.env.InstanceId,
+            Filters: {
+                Channels: ['VOICE'],
+                Queues: queues,
+                Agents: agents,
+            },
+            CurrentMetrics: [
+                { Name: "AGENTS_AFTER_CONTACT_WORK", Unit: "COUNT" },
+                { Name: "AGENTS_ON_CALL", Unit: "COUNT" },
+                { Name: "AGENTS_AVAILABLE", Unit: "COUNT" },
+                { Name: "AGENTS_ONLINE", Unit: "COUNT" },
+                { Name: "AGENTS_STAFFED", Unit: "COUNT" },
+                { Name: "CONTACTS_IN_QUEUE", Unit: "COUNT" },
+            ],
+         };
+
+         try {
+            const command = new GetCurrentMetricDataCommand(input);
+            const data = await client.send(command);
+            const metricsObject = convertToObject(data);
+
+            dailyRealTimeMetrics.push({
+                date: startTime.toISOString().split('T')[0],
+                metrics: metricsObject,
+            });
+            console.log(`Real-time Metrics for ${startTime.toISOString().split('T')[0]}:`, metricsObject);
+         } catch (err) {
+            console.error(`Error fetching real-time metrics for ${startTime.toISOString().split('T')[0]}:`, err);
+         }
+    }
+
+    return dailyRealTimeMetrics;
 }
+
 // Fetch historical metrics for each day over one month
 async function getHistoricalMetrics() {
-   const currentTime = new Date();
-   const endDate = new Date(currentTime);
-   const startDate = new Date();
-   startDate.setMonth(startDate.getMonth() - 1);
-   console.log("Fetching daily historical metrics from:", startDate.toISOString(), "to", endDate.toISOString());
-   const queues = await getQueues();
-   const agents = await getAgents();
-   const dailyHistoricalMetrics = [];
-   for (let date = new Date(startDate); date <= endDate; date.setDate(date.getDate() + 1)) {
-       const startTime = new Date(date);
-       const endTime = new Date(date);
-       // Adjust endTime to not exceed current time if fetching for today
-       if (endTime.toISOString().split('T')[0] === endDate.toISOString().split('T')[0]) {
-           endTime = new Date(startTime);
-           endTime.setSeconds(endTime.getSeconds() + 1)
-       } else {
-           endTime.setHours(23, 59, 59, 999);
-       }
-       const input = {
-           ResourceArn: process.env.ResourceArn,
-           StartTime: startTime,
-           EndTime: endTime,
-           Metrics: [
-               { Name: "SUM_CONTACTS_ABANDONED_IN_X", Threshold: [{ Comparison: "LT", ThresholdValue: 7200 }] },
-               { Name: "SUM_CONTACTS_ANSWERED_IN_X", Threshold: [{ Comparison: "LT", ThresholdValue: 7200 }] },
-               { Name: "ABANDONMENT_RATE", Unit: "COUNT" },
-               { Name: "AGENT_ANSWER_RATE",Unit: "COUNT" },
-               { Name: "CONTACTS_HANDLED", Unit: "COUNT" },
-               { Name: "MAX_QUEUED_TIME", Unit: "COUNT"},
-               { Name: "AVG_HANDLE_TIME", Unit: "COUNT" },
-           ],
-           Filters: [
-               { FilterKey: "QUEUE", FilterValues: queues },
-               { FilterKey: "AGENT", FilterValues: agents },
-           ],
-       };
-       try {
-           const command = new GetMetricDataV2Command(input);
-           const data = await client.send(command);
-           const metricsObject = convertToObject(data);
-           dailyHistoricalMetrics.push({
-               date: startTime.toISOString().split('T')[0],
-               metrics: metricsObject,
-           });
-           console.log(`Historical Metrics for ${startTime.toISOString().split('T')[0]}:`, metricsObject);
-       } catch (err) {
-           console.error(`Error fetching historical metrics for ${startTime.toISOString().split('T')[0]}:`, err);
-       }
-   }
-   return dailyHistoricalMetrics;
+    const currentTime = new Date();
+    const endDate = new Date(currentTime);
+    const startDate = new Date();
+    startDate.setMonth(startDate.getMonth() - 1);
+
+    console.log("Fetching daily historical metrics from:", startDate.toISOString(), "to", endDate.toISOString());
+
+    const queues = await getQueues();
+    const agents = await getAgents();
+    const dailyHistoricalMetrics = [];
+
+    for (let date = new Date(startDate); date <= endDate; date.setDate(date.getDate() + 1)) {
+         const startTime = new Date(date);
+         const endTime = new Date(date);
+         endTime.setHours(23, 59, 59, 999);
+
+         const input = {
+            ResourceArn: process.env.ResourceArn,
+            StartTime: startTime,
+            EndTime: endTime,
+            Metrics: [
+                { Name: "SUM_CONTACTS_ABANDONED_IN_X", Threshold: [{ Comparison: "LT", ThresholdValue: 7200 }] },
+                { Name: "SUM_CONTACTS_ANSWERED_IN_X", Threshold: [{ Comparison: "LT", ThresholdValue: 7200 }] },
+                { Name: "ABANDONMENT_RATE", Unit: "COUNT" },
+                { Name: "AGENT_ANSWER_RATE" },
+                { Name: "CONTACTS_HANDLED" },
+                { Name: "MAX_QUEUED_TIME" },
+                { Name: "AVG_HANDLE_TIME" },
+            ],
+            Filters: [
+                { FilterKey: "QUEUE", FilterValues: queues },
+                { FilterKey: "AGENT", FilterValues: agents },
+            ],
+         };
+
+         try {
+            const command = new GetMetricDataV2Command(input);
+            const data = await client.send(command);
+            const metricsObject = convertToObject(data);
+
+            dailyHistoricalMetrics.push({
+                date: startTime.toISOString().split('T')[0],
+                metrics: metricsObject,
+            });
+            console.log(`Historical Metrics for ${startTime.toISOString().split('T')[0]}:`, metricsObject);
+         } catch (err) {
+            console.error(`Error fetching historical metrics for ${startTime.toISOString().split('T')[0]}:`, err);
+         }
+    }
+
+    return dailyHistoricalMetrics;
 }
+
 // Handler function to call both APIs and return all metrics
 async function handler(event, context) {
-   try {
-       const currentMetrics = await getCurrentMetrics();
-       const historicalMetrics = await getHistoricalMetrics();
-       const allMetrics = {
-           realTimeMetrics: currentMetrics,
-           historicalMetrics: historicalMetrics,
-       };
-       console.log("Combined metrics for one month:", JSON.stringify(allMetrics));
-       return allMetrics;
-   } catch (err) {
-       console.error("Error in handler:", err);
-       throw err;
-   }
+    try {
+         const currentMetrics = await getCurrentMetrics();
+         const historicalMetrics = await getHistoricalMetrics();
+
+         const allMetrics = {
+            realTimeMetrics: currentMetrics,
+            historicalMetrics: historicalMetrics,
+         };
+
+         console.log("Combined metrics for one month:", JSON.stringify(allMetrics));
+         return allMetrics;
+    } catch (err) {
+         console.error("Error in handler:", err);
+         throw err;
+    }
 }
+
 // Function to convert API response into a clean object
 function convertToObject(data) {
-   const result = {};
-   if (data && data.MetricResults) {
-       for (let i = 0; i < data.MetricResults.length; i++) {
-           for (let j = 0; j < data.MetricResults[i].Collections.length; j++) {
-               const metricName = data.MetricResults[i].Collections[j].Metric.Name;
-               const metricValue = data.MetricResults[i].Collections[j].Value;
-               result[metricName] = metricValue;
-           }
-       }
-   }
-   console.log(result, 'Formatted Metrics');
-   return result;
+    const result = {};
+    if (data && data.MetricResults) {
+         for (let i = 0; i < data.MetricResults.length; i++) {
+            for (let j = 0; j < data.MetricResults[i].Collections.length; j++) {
+                const metricName = data.MetricResults[i].Collections[j].Metric.Name;
+                const metricValue = data.MetricResults[i].Collections[j].Value;
+                result[metricName] = metricValue;
+            }
+         }
+    }
+    console.log(result, 'Formatted Metrics');
+    return result;
 }
+
 export { handler, getCurrentMetrics, getHistoricalMetrics };
+this is the code to pull the metric values associated with agents.
+
+import { ConnectClient, ListQueuesCommand, GetCurrentMetricDataCommand, GetMetricDataV2Command } from "@aws-sdk/client-connect";
+
+const client = new ConnectClient({ region: 'us-east-1' });
+
+// Function to fetch queues dynamically using list queues
+async function getQueues() {
+    const input = {
+        InstanceId: process.env.InstanceId,
+    };
+    try {
+        const command = new ListQueuesCommand(input);
+        const data = await client.send(command);
+        const queueIds = data.QueueSummaryList.map(queue => queue.Id);
+        console.log("Fetched Queues:", queueIds);
+        return queueIds;
+    } catch (err) {
+        console.error("Error fetching queues:", err);
+        throw err;
+    }
+}
+
+// Fetch real-time metrics for each day over one month
+async function getCurrentMetrics() {
+    const currentTime = new Date();
+    const endDate = new Date(currentTime);
+    const startDate = new Date();
+    startDate.setMonth(startDate.getMonth() - 1);
+
+    console.log("Fetching daily real-time metrics from:", startDate.toISOString(), "to", endDate.toISOString());
+
+    const queues = await getQueues();
+    const dailyRealTimeMetrics = [];
+
+    // Loop through each day in the range
+    for (let date = new Date(startDate); date <= endDate; date.setDate(date.getDate() + 1)) {
+        const startTime = new Date(date);
+        const endTime = new Date(date);
+        endTime.setHours(23, 59, 59, 999);
+
+        const input = {
+            InstanceId: process.env.InstanceId,
+            Filters: {
+                Channels: ['VOICE'],
+                Queues: queues,
+            },
+            CurrentMetrics: [
+                { Name: "AGENTS_AFTER_CONTACT_WORK", Unit: "COUNT" },
+                { Name: "AGENTS_ON_CALL", Unit: "COUNT" },
+                { Name: "AGENTS_AVAILABLE", Unit: "COUNT" },
+                { Name: "AGENTS_ONLINE", Unit: "COUNT" },
+                { Name: "AGENTS_STAFFED", Unit: "COUNT" },
+                { Name: "CONTACTS_IN_QUEUE", Unit: "COUNT" },
+            ],
+        };
+
+        try {
+            const command = new GetCurrentMetricDataCommand(input);
+            const data = await client.send(command);
+            const metricsObject = convertToObject(data);
+
+            dailyRealTimeMetrics.push({
+                date: startTime.toISOString().split('T')[0],
+                metrics: metricsObject,
+            });
+            console.log(`Real-time Metrics for ${startTime.toISOString().split('T')[0]}:`, metricsObject);
+        } catch (err) {
+            console.error(`Error fetching real-time metrics for ${startTime.toISOString().split('T')[0]}:`, err);
+        }
+    }
+
+    return dailyRealTimeMetrics;
+}
+
+// Fetch historical metrics for each day over one month
+async function getHistoricalMetrics() {
+    const currentTime = new Date();
+    const endDate = new Date(currentTime);
+    const startDate = new Date();
+    startDate.setMonth(startDate.getMonth() - 1);
+
+    console.log("Fetching daily historical metrics from:", startDate.toISOString(), "to", endDate.toISOString());
+
+    const queues = await getQueues();
+    const dailyHistoricalMetrics = [];
+
+    for (let date = new Date(startDate); date <= endDate; date.setDate(date.getDate() + 1)) {
+        const startTime = new Date(date);
+        const endTime = new Date(date);
+        endTime.setHours(23, 59, 59, 999);
+
+        const input = {
+            ResourceArn: process.env.ResourceArn,
+            StartTime: startTime,
+            EndTime: endTime,
+            Metrics: [
+                { Name: "SUM_CONTACTS_ABANDONED_IN_X", Threshold: [{ Comparison: "LT", ThresholdValue: 7200 }] },
+                { Name: "SUM_CONTACTS_ANSWERED_IN_X", Threshold: [{ Comparison: "LT", ThresholdValue: 7200 }] },
+                { Name: "ABANDONMENT_RATE", Unit: "COUNT" },
+                { Name: "AGENT_ANSWER_RATE" },
+                { Name: "CONTACTS_HANDLED" },
+                { Name: "MAX_QUEUED_TIME" },
+                { Name: "AVG_HANDLE_TIME" },
+            ],
+            Filters: [
+                { FilterKey: "QUEUE", FilterValues: queues },
+            ],
+        };
+
+        try {
+            const command = new GetMetricDataV2Command(input);
+            const data = await client.send(command);
+            const metricsObject = convertToObject(data);
+
+            dailyHistoricalMetrics.push({
+                date: startTime.toISOString().split('T')[0],
+                metrics: metricsObject,
+            });
+            console.log(`Historical Metrics for ${startTime.toISOString().split('T')[0]}:`, metricsObject);
+        } catch (err) {
+            console.error(`Error fetching historical metrics for ${startTime.toISOString().split('T')[0]}:`, err);
+        }
+    }
+
+    return dailyHistoricalMetrics;
+}
+
+// Handler function to call both APIs and return all metrics
+async function handler(event, context) {
+    try {
+        const currentMetrics = await getCurrentMetrics();
+        const historicalMetrics = await getHistoricalMetrics();
+
+        const allMetrics = {
+            realTimeMetrics: currentMetrics,
+            historicalMetrics: historicalMetrics,
+        };
+
+        console.log("Combined metrics for one month:", JSON.stringify(allMetrics));
+        return allMetrics;
+    } catch (err) {
+        console.error("Error in handler:", err);
+        throw err;
+    }
+}
+
+// Function to convert API response into a clean object
+function convertToObject(data) {
+    const result = {};
+    if (data && data.MetricResults) {
+        for (let i = 0; i < data.MetricResults.length; i++) {
+            for (let j = 0; j < data.MetricResults[i].Collections.length; j++) {
+                const metricName = data.MetricResults[i].Collections[j].Metric.Name;
+                const metricValue = data.MetricResults[i].Collections[j].Value;
+                result[metricName] = metricValue;
+            }
+        }
+    }
+    console.log(result, 'Formatted Metrics');
+    return result;
+}
+
+export { handler, getCurrentMetrics, getHistoricalMetrics };
+
+
+this is the metric values to be associated with queues.
+
+here, from both the codes, please fetch real time metrics for queues and agents. please hold the same logic itself  , fetching data of 30 days , daily metrics and all. write in a single code
