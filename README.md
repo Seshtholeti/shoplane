@@ -529,3 +529,6 @@ const CustomChatbot = ({ sessionId, setSessionId }) => {
 };
 
 export default CustomChatbot;
+
+
+when ever I am using this code, in the starting chat it is howing null, it has to render as soon as I open the chatbot. the carousel image and the buttons
