@@ -1,10 +1,4 @@
-import { ConnectClient, GetCurrentMetricDataCommand, GetMetricDataCommand } from '@aws-sdk/client-connect';
-import { parse } from 'json2csv';
-import fs from 'fs';
 
-const REGION = 'us-east-1';
-const INSTANCE_ID = '<Your_Instance_ID>';
-const connectClient = new ConnectClient({ region: REGION });
 
 // Metrics list as per provided requirements
 const metrics = [
@@ -23,72 +17,133 @@ const metrics = [
   { Name: "SLOTS_AVAILABLE", Unit: "COUNT" }
 ];
 
-/**
- * Fetch Real-Time Metrics
- * @param {string} filterType - Type of filter (queue, phoneNumber, agent)
- * @param {Array} filterValues - Values to filter (queueIds, agentIds)
- * @returns {Array} - Real-time metrics data
- */
-async function getRealTimeMetrics(filterType, filterValues) {
-  const params = {
-    InstanceId: INSTANCE_ID,
-    CurrentMetrics: metrics,
-    Filters: {
-      Channels: ['VOICE'],
+this is the snippet code please refer it:
+import { ConnectClient, GetCurrentMetricDataCommand } from "@aws-sdk/client-connect"; // ES Modules import
+// const { ConnectClient, GetCurrentMetricDataCommand } = require("@aws-sdk/client-connect"); // CommonJS import
+const client = new ConnectClient(config);
+const input = { // GetCurrentMetricDataRequest
+  InstanceId: "STRING_VALUE", // required
+  Filters: { // Filters
+    Queues: [ // Queues
+      "STRING_VALUE",
+    ],
+    Channels: [ // Channels
+      "VOICE" || "CHAT" || "TASK",
+    ],
+    RoutingProfiles: [ // RoutingProfiles
+      "STRING_VALUE",
+    ],
+    RoutingStepExpressions: [ // RoutingExpressions
+      "STRING_VALUE",
+    ],
+  },
+  Groupings: [ // Groupings
+    "QUEUE" || "CHANNEL" || "ROUTING_PROFILE" || "ROUTING_STEP_EXPRESSION",
+  ],
+  CurrentMetrics: [ // CurrentMetrics // required
+    { // CurrentMetric
+      Name: "AGENTS_ONLINE" || "AGENTS_AVAILABLE" || "AGENTS_ON_CALL" || "AGENTS_NON_PRODUCTIVE" || "AGENTS_AFTER_CONTACT_WORK" || "AGENTS_ERROR" || "AGENTS_STAFFED" || "CONTACTS_IN_QUEUE" || "OLDEST_CONTACT_AGE" || "CONTACTS_SCHEDULED" || "AGENTS_ON_CONTACT" || "SLOTS_ACTIVE" || "SLOTS_AVAILABLE",
+      Unit: "SECONDS" || "COUNT" || "PERCENT",
     },
-  };
+  ],
+  NextToken: "STRING_VALUE",
+  MaxResults: Number("int"),
+  SortCriteria: [ // CurrentMetricSortCriteriaMaxOne
+    { // CurrentMetricSortCriteria
+      SortByMetric: "AGENTS_ONLINE" || "AGENTS_AVAILABLE" || "AGENTS_ON_CALL" || "AGENTS_NON_PRODUCTIVE" || "AGENTS_AFTER_CONTACT_WORK" || "AGENTS_ERROR" || "AGENTS_STAFFED" || "CONTACTS_IN_QUEUE" || "OLDEST_CONTACT_AGE" || "CONTACTS_SCHEDULED" || "AGENTS_ON_CONTACT" || "SLOTS_ACTIVE" || "SLOTS_AVAILABLE",
+      SortOrder: "ASCENDING" || "DESCENDING",
+    },
+  ],
+};
+const command = new GetCurrentMetricDataCommand(input);
+const response = await client.send(command);
+// { // GetCurrentMetricDataResponse
+//   NextToken: "STRING_VALUE",
+//   MetricResults: [ // CurrentMetricResults
+//     { // CurrentMetricResult
+//       Dimensions: { // Dimensions
+//         Queue: { // QueueReference
+//           Id: "STRING_VALUE",
+//           Arn: "STRING_VALUE",
+//         },
+//         Channel: "VOICE" || "CHAT" || "TASK",
+//         RoutingProfile: { // RoutingProfileReference
+//           Id: "STRING_VALUE",
+//           Arn: "STRING_VALUE",
+//         },
+//         RoutingStepExpression: "STRING_VALUE",
+//       },
+//       Collections: [ // CurrentMetricDataCollections
+//         { // CurrentMetricData
+//           Metric: { // CurrentMetric
+//             Name: "AGENTS_ONLINE" || "AGENTS_AVAILABLE" || "AGENTS_ON_CALL" || "AGENTS_NON_PRODUCTIVE" || "AGENTS_AFTER_CONTACT_WORK" || "AGENTS_ERROR" || "AGENTS_STAFFED" || "CONTACTS_IN_QUEUE" || "OLDEST_CONTACT_AGE" || "CONTACTS_SCHEDULED" || "AGENTS_ON_CONTACT" || "SLOTS_ACTIVE" || "SLOTS_AVAILABLE",
+//             Unit: "SECONDS" || "COUNT" || "PERCENT",
+//           },
+//           Value: Number("double"),
+//         },
+//       ],
+//     },
+//   ],
+//   DataSnapshotTime: new Date("TIMESTAMP"),
+//   ApproximateTotalCount: Number("long"),
+// };
 
-  // Apply Queue or Agent filters
-  if (filterType === 'queue') params.Filters.Queues = filterValues;
-  if (filterType === 'agent') params.Filters.RoutingProfiles = filterValues;
 
-  const command = new GetCurrentMetricDataCommand(params);
-  try {
-    const data = await connectClient.send(command);
-    return data.MetricResults || [];
-  } catch (error) {
-    console.error('Error fetching real-time metrics:', error);
-    return [];
-  }
-}
 
-/**
- * Export Metrics Data
- * @param {Array} metrics - Metrics data to export
- * @param {string} format - Export format (CSV or JSON)
- * @returns {string} - Exported data as string
- */
-function exportMetricsData(metrics, format) {
-  if (format === 'CSV') {
-    try {
-      return parse(metrics);
-    } catch (error) {
-      console.error('Error converting to CSV:', error);
-      return '';
-    }
-  }
-  return JSON.stringify(metrics, null, 2);
-}
+import { ConnectClient, ListQueuesCommand } from "@aws-sdk/client-connect"; // ES Modules import
+// const { ConnectClient, ListQueuesCommand } = require("@aws-sdk/client-connect"); // CommonJS import
+const client = new ConnectClient(config);
+const input = { // ListQueuesRequest
+  InstanceId: "STRING_VALUE", // required
+  QueueTypes: [ // QueueTypes
+    "STANDARD" || "AGENT",
+  ],
+  NextToken: "STRING_VALUE",
+  MaxResults: Number("int"),
+};
+const command = new ListQueuesCommand(input);
+const response = await client.send(command);
+// { // ListQueuesResponse
+//   QueueSummaryList: [ // QueueSummaryList
+//     { // QueueSummary
+//       Id: "STRING_VALUE",
+//       Arn: "STRING_VALUE",
+//       Name: "STRING_VALUE",
+//       QueueType: "STANDARD" || "AGENT",
+//       LastModifiedTime: new Date("TIMESTAMP"),
+//       LastModifiedRegion: "STRING_VALUE",
+//     },
+//   ],
+//   NextToken: "STRING_VALUE",
+// };
 
-/**
- * Main Function to Execute Fetching and Displaying of Metrics
- */
-async function main() {
-  // Input Parameters
-  const filterType = 'queue'; // Options: 'queue', 'agent'
-  const filterValues = ['QueueID1']; // Replace with actual Queue or Agent IDs
-  const downloadFormat = 'CSV'; // Options: 'CSV', 'JSON'
-  
-  // Fetch Real-Time Metrics
-  const realTimeMetrics = await getRealTimeMetrics(filterType, filterValues);
-  console.log('Real-Time Metrics:', realTimeMetrics);
+import { ConnectClient, ListPhoneNumbersCommand } from "@aws-sdk/client-connect"; // ES Modules import
+// const { ConnectClient, ListPhoneNumbersCommand } = require("@aws-sdk/client-connect"); // CommonJS import
+const client = new ConnectClient(config);
+const input = { // ListPhoneNumbersRequest
+  InstanceId: "STRING_VALUE", // required
+  PhoneNumberTypes: [ // PhoneNumberTypes
+    "TOLL_FREE" || "DID" || "UIFN" || "SHARED" || "THIRD_PARTY_TF" || "THIRD_PARTY_DID" || "SHORT_CODE",
+  ],
+  PhoneNumberCountryCodes: [ // PhoneNumberCountryCodes
+    "AF" || "AL" || "DZ" || "AS" || "AD" || "AO" || "AI" || "AQ" || "AG" || "AR" || "AM" || "AW" || "AU" || "AT" || "AZ" || "BS" || "BH" || "BD" || "BB" || "BY" || "BE" || "BZ" || "BJ" || "BM" || "BT" || "BO" || "BA" || "BW" || "BR" || "IO" || "VG" || "BN" || "BG" || "BF" || "BI" || "KH" || "CM" || "CA" || "CV" || "KY" || "CF" || "TD" || "CL" || "CN" || "CX" || "CC" || "CO" || "KM" || "CK" || "CR" || "HR" || "CU" || "CW" || "CY" || "CZ" || "CD" || "DK" || "DJ" || "DM" || "DO" || "TL" || "EC" || "EG" || "SV" || "GQ" || "ER" || "EE" || "ET" || "FK" || "FO" || "FJ" || "FI" || "FR" || "PF" || "GA" || "GM" || "GE" || "DE" || "GH" || "GI" || "GR" || "GL" || "GD" || "GU" || "GT" || "GG" || "GN" || "GW" || "GY" || "HT" || "HN" || "HK" || "HU" || "IS" || "IN" || "ID" || "IR" || "IQ" || "IE" || "IM" || "IL" || "IT" || "CI" || "JM" || "JP" || "JE" || "JO" || "KZ" || "KE" || "KI" || "KW" || "KG" || "LA" || "LV" || "LB" || "LS" || "LR" || "LY" || "LI" || "LT" || "LU" || "MO" || "MK" || "MG" || "MW" || "MY" || "MV" || "ML" || "MT" || "MH" || "MR" || "MU" || "YT" || "MX" || "FM" || "MD" || "MC" || "MN" || "ME" || "MS" || "MA" || "MZ" || "MM" || "NA" || "NR" || "NP" || "NL" || "AN" || "NC" || "NZ" || "NI" || "NE" || "NG" || "NU" || "KP" || "MP" || "NO" || "OM" || "PK" || "PW" || "PA" || "PG" || "PY" || "PE" || "PH" || "PN" || "PL" || "PT" || "PR" || "QA" || "CG" || "RE" || "RO" || "RU" || "RW" || "BL" || "SH" || "KN" || "LC" || "MF" || "PM" || "VC" || "WS" || "SM" || "ST" || "SA" || "SN" || "RS" || "SC" || "SL" || "SG" || "SX" || "SK" || "SI" || "SB" || "SO" || "ZA" || "KR" || "ES" || "LK" || "SD" || "SR" || "SJ" || "SZ" || "SE" || "CH" || "SY" || "TW" || "TJ" || "TZ" || "TH" || "TG" || "TK" || "TO" || "TT" || "TN" || "TR" || "TM" || "TC" || "TV" || "VI" || "UG" || "UA" || "AE" || "GB" || "US" || "UY" || "UZ" || "VU" || "VA" || "VE" || "VN" || "WF" || "EH" || "YE" || "ZM" || "ZW",
+  ],
+  NextToken: "STRING_VALUE",
+  MaxResults: Number("int"),
+};
+const command = new ListPhoneNumbersCommand(input);
+const response = await client.send(command);
+// { // ListPhoneNumbersResponse
+//   PhoneNumberSummaryList: [ // PhoneNumberSummaryList
+//     { // PhoneNumberSummary
+//       Id: "STRING_VALUE",
+//       Arn: "STRING_VALUE",
+//       PhoneNumber: "STRING_VALUE",
+//       PhoneNumberType: "TOLL_FREE" || "DID" || "UIFN" || "SHARED" || "THIRD_PARTY_TF" || "THIRD_PARTY_DID" || "SHORT_CODE",
+//       PhoneNumberCountryCode: "AF" || "AL" || "DZ" || "AS" || "AD" || "AO" || "AI" || "AQ" || "AG" || "AR" || "AM" || "AW" || "AU" || "AT" || "AZ" || "BS" || "BH" || "BD" || "BB" || "BY" || "BE" || "BZ" || "BJ" || "BM" || "BT" || "BO" || "BA" || "BW" || "BR" || "IO" || "VG" || "BN" || "BG" || "BF" || "BI" || "KH" || "CM" || "CA" || "CV" || "KY" || "CF" || "TD" || "CL" || "CN" || "CX" || "CC" || "CO" || "KM" || "CK" || "CR" || "HR" || "CU" || "CW" || "CY" || "CZ" || "CD" || "DK" || "DJ" || "DM" || "DO" || "TL" || "EC" || "EG" || "SV" || "GQ" || "ER" || "EE" || "ET" || "FK" || "FO" || "FJ" || "FI" || "FR" || "PF" || "GA" || "GM" || "GE" || "DE" || "GH" || "GI" || "GR" || "GL" || "GD" || "GU" || "GT" || "GG" || "GN" || "GW" || "GY" || "HT" || "HN" || "HK" || "HU" || "IS" || "IN" || "ID" || "IR" || "IQ" || "IE" || "IM" || "IL" || "IT" || "CI" || "JM" || "JP" || "JE" || "JO" || "KZ" || "KE" || "KI" || "KW" || "KG" || "LA" || "LV" || "LB" || "LS" || "LR" || "LY" || "LI" || "LT" || "LU" || "MO" || "MK" || "MG" || "MW" || "MY" || "MV" || "ML" || "MT" || "MH" || "MR" || "MU" || "YT" || "MX" || "FM" || "MD" || "MC" || "MN" || "ME" || "MS" || "MA" || "MZ" || "MM" || "NA" || "NR" || "NP" || "NL" || "AN" || "NC" || "NZ" || "NI" || "NE" || "NG" || "NU" || "KP" || "MP" || "NO" || "OM" || "PK" || "PW" || "PA" || "PG" || "PY" || "PE" || "PH" || "PN" || "PL" || "PT" || "PR" || "QA" || "CG" || "RE" || "RO" || "RU" || "RW" || "BL" || "SH" || "KN" || "LC" || "MF" || "PM" || "VC" || "WS" || "SM" || "ST" || "SA" || "SN" || "RS" || "SC" || "SL" || "SG" || "SX" || "SK" || "SI" || "SB" || "SO" || "ZA" || "KR" || "ES" || "LK" || "SD" || "SR" || "SJ" || "SZ" || "SE" || "CH" || "SY" || "TW" || "TJ" || "TZ" || "TH" || "TG" || "TK" || "TO" || "TT" || "TN" || "TR" || "TM" || "TC" || "TV" || "VI" || "UG" || "UA" || "AE" || "GB" || "US" || "UY" || "UZ" || "VU" || "VA" || "VE" || "VN" || "WF" || "EH" || "YE" || "ZM" || "ZW",
+//     },
+//   ],
+//   NextToken: "STRING_VALUE",
+// };
 
-  // Export Metrics to file
-  const exportData = exportMetricsData(realTimeMetrics, downloadFormat);
-  const fileName = `realtime_metrics_report.${downloadFormat.toLowerCase()}`;
-  fs.writeFileSync(fileName, exportData);
-  console.log(`Metrics report saved to ${fileName}`);
-}
-
-// Execute the main function
-main().catch(error => console.error('Execution Error:', error));
+similarly for agents
