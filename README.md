@@ -1,138 +1,92 @@
-import { ConnectClient, ListQueuesCommand, ListUsersCommand, GetCurrentMetricDataCommand } from "@aws-sdk/client-connect";
+import { ConnectClient, GetCurrentMetricDataCommand, ListQueuesCommand } from "@aws-sdk/client-connect";
 
+// Initialize the Connect client
 const client = new ConnectClient({ region: 'us-east-1' });
 
-// Function to fetch queues dynamically
-async function getQueues() {
-    const input = {
-        InstanceId: process.env.InstanceId,
-    };
-    try {
-        const command = new ListQueuesCommand(input);
-        const data = await client.send(command);
-        const queueIds = data.QueueSummaryList.map(queue => queue.Id);
-        console.log("Fetched Queues:", queueIds);
-        return queueIds;
-    } catch (err) {
-        console.error("Error fetching queues:", err);
-        throw err;
-    }
+// Function to fetch queues dynamically using ListQueuesCommand
+async function getQueues(instanceId) {
+ const input = {
+   InstanceId: instanceId,
+ };
+ try {
+   const command = new ListQueuesCommand(input);
+   const data = await client.send(command);
+   const queueIds = data.QueueSummaryList.map(queue => queue.Id);
+   return queueIds;
+ } catch (err) {
+   console.error("Error fetching queues:", err);
+   throw err;
+ }
 }
 
-// Function to fetch agents dynamically
-async function getAgents() {
-    const input = { InstanceId: process.env.InstanceId };
-    try {
-        const command = new ListUsersCommand(input);
-        const data = await client.send(command);
-        const agentIds = data.UserSummaryList.map(user => user.Id);
-        console.log("Fetched Agents:", agentIds);
-        return agentIds;
-    } catch (err) {
-        console.error("Error fetching agents:", err);
-        throw err;
-    }
-}
+export const handler = async (event) => {
+ const { resourceType, selectedResources, startDate, endDate } = event;
 
-// Function to fetch phone numbers dynamically (mock for now)
-async function getPhoneNumbers() {
-    return ['+1234567890', '+1987654321'];  // Example phone numbers
-}
+ // Validate that selectedResources is not empty
+ if (!selectedResources || selectedResources.length === 0) {
+   throw new Error("You must select at least one resource.");
+ }
 
-// Function to fetch real-time metrics based on selected resource and date range
-async function getRealTimeMetrics(resourceType, selectedResources, startDate, endDate) {
-    // Convert startDate and endDate to Date objects
-    const start = new Date(startDate);
-    const end = new Date(endDate);
-    
-    console.log(`Fetching real-time metrics from: ${start.toISOString()} to ${end.toISOString()}`);
+ // Use the InstanceId from environment variables
+ const instanceId = process.env.InstanceId;
 
-    let resources = [];
-    if (resourceType === "Queues") {
-        resources = await getQueues();
-    } else if (resourceType === "Agents") {
-        resources = await getAgents();
-    } else if (resourceType === "Phone Numbers") {
-        resources = await getPhoneNumbers();
-    } else {
-        throw new Error("Invalid resource type selected.");
-    }
+ // If the resourceType is "Queues", fetch metrics for selected queues
+ if (resourceType === "Queues") {
+   const queueIds = selectedResources; // Queue IDs passed from the front-end
 
-    // Filter resources based on selected items (e.g., agents, queues, or phone numbers)
-    const filteredResources = resources.filter(resource => selectedResources.includes(resource));
+   // Prepare input for GetCurrentMetricDataCommand
+   const input = {
+     InstanceId: instanceId, // Use your instance ID from environment variables
+     Filters: {
+       Queues: queueIds, // Pass selected queue IDs
+       Channels: ["VOICE"], // Adjust channels if necessary
+     },
+     Groupings: ["QUEUE"], // Grouping by queue
+     CurrentMetrics: [
+       { Name: "AGENTS_ONLINE", Unit: "COUNT" },
+       { Name: "AGENTS_AVAILABLE", Unit: "COUNT" },
+       { Name: "CONTACTS_IN_QUEUE", Unit: "COUNT" },
+       { Name: "AGENTS_ERROR", Unit: "COUNT" },
+       { Name: "CONTACTS_SCHEDULED", Unit: "COUNT" },
+       { Name: "OLDEST_CONTACT_AGE", Unit: "SECONDS" },
+       // Add other metrics as needed
+     ],
+     StartTime: new Date(startDate).toISOString(),
+     EndTime: new Date(endDate).toISOString(),
+   };
 
-    // Prepare input for AWS Connect metric request
-    const input = {
-        InstanceId: process.env.InstanceId,
-        Filters: {
-            Channels: ['VOICE'],
-            [resourceType]: filteredResources,
-        },
-        CurrentMetrics: [
-            { Name: "AGENTS_ONLINE", Unit: "COUNT" },
-            { Name: "AGENTS_AVAILABLE", Unit: "COUNT" },
-            { Name: "AGENTS_ON_CALL", Unit: "COUNT" },
-            { Name: "CONTACTS_IN_QUEUE", Unit: "COUNT" },
-            { Name: "SLOTS_ACTIVE", Unit: "COUNT" },
-            { Name: "SLOTS_AVAILABLE", Unit: "COUNT" },
-            // Add more metric types as required
-        ],
-        StartTime: start.toISOString(),
-        EndTime: end.toISOString(),
-    };
+   try {
+     // Fetch the real-time metrics for the selected queues
+     const command = new GetCurrentMetricDataCommand(input);
+     const data = await client.send(command);
+     
+     // Process the response and return the metrics
+     const metrics = data.MetricResults.map((result) => {
+       const queueMetrics = result.Collections.map((collection) => ({
+         metricName: collection.Metric.Name,
+         metricValue: collection.Value,
+       }));
+       return {
+         queueId: result.Dimensions.Queue.Id,
+         metrics: queueMetrics,
+       };
+     });
 
-    try {
-        const command = new GetCurrentMetricDataCommand(input);
-        const data = await client.send(command);
-
-        const metricsObject = convertToObject(data);
-        console.log(`Real-time Metrics from ${start.toISOString()} to ${end.toISOString()}:`, metricsObject);
-        return metricsObject;
-    } catch (err) {
-        console.error("Error fetching real-time metrics:", err);
-        throw err;
-    }
-}
-
-// Convert API response into a clean object
-function convertToObject(data) {
-    const result = {};
-    if (data && data.MetricResults) {
-        for (let i = 0; i < data.MetricResults.length; i++) {
-            for (let j = 0; j < data.MetricResults[i].Collections.length; j++) {
-                const metricName = data.MetricResults[i].Collections[j].Metric.Name;
-                const metricValue = data.MetricResults[i].Collections[j].Value;
-                result[metricName] = metricValue;
-            }
-        }
-    }
-    console.log(result, 'Formatted Metrics');
-    return result;
-}
-
-// Lambda Handler to receive the event with user input from the front-end
-exports.handler = async (event) => {
-    const { resourceType, selectedResources, startDate, endDate } = event;  // Inputs from front-end
-
-    // Validate inputs
-    if (!resourceType || !selectedResources || !startDate || !endDate) {
-        return {
-            statusCode: 400,
-            body: JSON.stringify({ success: false, message: "Missing required input parameters." }),
-        };
-    }
-
-    try {
-        const metrics = await getRealTimeMetrics(resourceType, selectedResources, startDate, endDate);
-        return {
-            statusCode: 200,
-            body: JSON.stringify({ success: true, metrics }),
-        };
-    } catch (err) {
-        console.error("Error in handler:", err);
-        return {
-            statusCode: 500,
-            body: JSON.stringify({ success: false, message: err.message }),
-        };
-    }
+     return {
+       statusCode: 200,
+       body: JSON.stringify(metrics),
+     };
+   } catch (err) {
+     console.error("Error fetching metrics:", err);
+     return {
+       statusCode: 500,
+       body: JSON.stringify({ error: err.message }),
+     };
+   }
+ } else {
+   return {
+     statusCode: 400,
+     body: JSON.stringify({ error: "Unsupported resource type" }),
+   };
+ }
 };
