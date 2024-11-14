@@ -1,255 +1,106 @@
-import React, { useState, useEffect, useRef } from "react";
-import axios from "axios";
-import {
-  Button,
-  TextField,
-  Paper,
-  Typography,
-  IconButton,
-  Tooltip,
-  DialogContent,
-  DialogContentText,
-  DialogTitle,
-} from "@mui/material";
-import CloseIcon from "@mui/icons-material/Close";
-import SendIcon from "@mui/icons-material/Send";
-import botImg from "../../Images/bot.png";
-import styles from "../componentStyling/CustomChatbot.module.css";
-import {
-  closeChat,
-  endChat,
-  initializeChat,
-  sendMessage as sendLiveChatMessage,
-} from "../StartChatContact";
-import { configDefault } from "../../config";
-import TypingLoader from "../TypingLoader";
-import Messages from "../Messages";
-import ProcessLexResponse from "../ProcessLexResponse";
-import PreChatForm from "../PreChatForm";
-import ClickToCall from "../ClickToCall";
-
-const lex_url = process.env.REACT_APP_LEX_API_GATEWAY;
-
-const CustomChatbot = ({ sessionId, setSessionId }) => {
-  const [open, setOpen] = useState(false);
-  const [messages, setMessages] = useState([]);
-  const [input, setInput] = useState("");
-  const [isConnected, setIsConnected] = useState(false);
-  const [chatEnded, setChatEnded] = useState(false);
-  const [messageLoading, setMessageLoading] = useState(false);
-  const [confirmClose, setConfirmClose] = useState(false);
-  const chatClient = useRef(null);
-  const agentName = useRef("");
-  const [typingLoader, setTypingLoader] = useState(false);
-  const [showClickToCall, setShowClickToCall] = useState(false);
-  const [userDetails, setUserDetails] = useState(null);
-  const messagesEndRef = useRef(null);
-
-  // Scroll to the bottom of chat
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({
-      behavior: "smooth",
-      block: "end",
-    });
-  };
-
-  // Render initial message on chatbot open
-  const renderInitialMessage = async () => {
-    setMessageLoading(true);
-    try {
-      const payload = {
-        region: configDefault.lex.region,
-        session_id: sessionId,
-        text: "Hello",
-        Attributes: userDetails,
-      };
-      const response = await axios.post(lex_url, payload);
-      const processedMessages = ProcessLexResponse(response?.data?.messages);
-      setMessages([...processedMessages]); // Directly set the initial response
-      setMessageLoading(false);
-    } catch (error) {
-      console.error("Failed to render initial message:", error);
-      setMessages([
-        {
-          botText: {
-            contentType: "PlainText",
-            content: "Error occurred while initializing your message.",
-          },
-        },
-      ]);
-      setMessageLoading(false);
-    }
-  };
-
-  // Open chatbot with initial message load
-  const handleOpenChatbot = async () => {
-    setOpen(true);
-    if (!messages.length) {
-      await renderInitialMessage(); // Ensure the initial message loads on open
-    }
-  };
-
-  const handleSend = async () => {
-    if (!input.trim()) return;
-    setMessages((prevMessages) => [...prevMessages, { userText: input }]);
-    setInput("");
-    setMessageLoading(true);
-
-    try {
-      const payload = {
-        region: configDefault.lex.region,
-        session_id: sessionId,
-        text: input,
-        Attributes: userDetails,
-      };
-      const response = await axios.post(lex_url, payload);
-      const processedMessages = ProcessLexResponse(response?.data?.messages);
-      setMessages((prevMessages) => [...prevMessages, ...processedMessages]);
-
-      // Check sessionAttributes for live agent chat initialization
-      const sessionAttributes =
-        response.data?.sessionState?.sessionAttributes;
-      if (
-        sessionAttributes &&
-        sessionAttributes.ContactId &&
-        sessionAttributes.ParticipantId &&
-        sessionAttributes.ParticipantToken
-      ) {
-        await initializeChat(
-          setMessages,
-          setIsConnected,
-          setChatEnded,
-          agentName,
-          chatClient,
-          setTypingLoader,
-          false,
-          sessionAttributes.ContactId,
-          sessionAttributes.ParticipantId,
-          sessionAttributes.ParticipantToken,
-          setSessionId,
-          userDetails
-        );
-      }
-    } catch (error) {
-      console.error("Failed to send message:", error);
-      setMessages((prevMessages) => [
-        ...prevMessages,
-        {
-          botText: {
-            contentType: "PlainText",
-            content: "Error occurred while processing your message.",
-          },
-        },
-      ]);
-    } finally {
-      setMessageLoading(false);
-    }
-  };
-
-  const handleButtonClick = async (buttonText) => {
-    setMessages((prevMessages) => [
-      ...prevMessages,
-      { userText: buttonText },
-    ]);
-    setMessageLoading(true);
-
-    if (["call", "clicktocall"].includes(buttonText.toLowerCase())) {
-      setShowClickToCall(true);
-      setMessageLoading(false);
-      return;
-    }
-
-    try {
-      const payload = {
-        region: configDefault.lex.region,
-        session_id: sessionId,
-        text: buttonText,
-        Attributes: userDetails,
-      };
-      const response = await axios.post(lex_url, payload);
-      const processedMessages = ProcessLexResponse(response?.data?.messages);
-      setMessages((prevMessages) => [...prevMessages, ...processedMessages]);
-    } catch (error) {
-      console.error("Failed to send message:", error);
-    } finally {
-      setMessageLoading(false);
-    }
-  };
-
-  const handleCloseChatbot = () => {
-    setConfirmClose(true);
-  };
-
-  const confirmCloseChat = () => {
-    setConfirmClose(false);
-    closeChat(
-      setMessages,
-      setInput,
-      setOpen,
-      setChatEnded,
-      agentName,
-      setIsConnected,
-      setTypingLoader,
-      chatClient,
-      setSessionId
-    );
-    setUserDetails(null);
-  };
-
-  return (
-    <div className={styles.chatbotContainer}>
-      {!open && (
-        <Tooltip title="Open Chatbot" placement="top">
-          <IconButton color="primary" onClick={handleOpenChatbot}>
-            <img src={botImg} alt="chatbot" height={60} width={60} />
-          </IconButton>
-        </Tooltip>
-      )}
-      {open && (
-        <Paper elevation={3} className={styles.chatPaper}>
-          <div className={styles.header}>
-            <img src={botImg} alt="chatbot" className={styles.botImageHead} />
-            <Typography variant="h6">RetailPal</Typography>
-            <Tooltip title="Close">
-              <IconButton size="small" onClick={handleCloseChatbot}>
-                <CloseIcon fontSize="small" />
-              </IconButton>
-            </Tooltip>
-          </div>
-          <div className={styles.messageContainer}>
-            {messages.map((msg, index) => (
-              <Messages
-                key={index}
-                msg={msg}
-                handleButtonClick={handleButtonClick}
-              />
-            ))}
-            {!showClickToCall && (messageLoading || typingLoader) && (
-              <TypingLoader />
-            )}
-            <div ref={messagesEndRef} />
-          </div>
-          <div className={styles.inputContainer}>
-            <TextField
-              size="small"
-              fullWidth
-              label="Type a message"
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && handleSend()}
-            />
-            <IconButton
-              color="primary"
-              onClick={handleSend}
-              disabled={!input}
-            >
-              <SendIcon />
-            </IconButton>
-          </div>
-        </Paper>
-      )}
-    </div>
-  );
+import { ConnectClient, ListPhoneNumbersCommand, GetCurrentMetricDataCommand, GetMetricDataCommand } from "@aws-sdk/client-connect";
+const REGION = "us-east-1"; 
+const instanceId = "arn:aws:connect:us-east-1:768637739934:instance/bd16d991-11c8-4d1e-9900-edd5ed4a9b21"; 
+const client = new ConnectClient({ region: REGION });
+/**
+* Function to list all phone numbers in the Connect instance
+*/
+const listPhoneNumbers = async () => {
+ try {
+   const command = new ListPhoneNumbersCommand({ InstanceId: instanceId });
+   const response = await client.send(command);
+   console.log("List of Phone Numbers:", response.PhoneNumberSummaryList);
+   return response.PhoneNumberSummaryList;
+ } catch (error) {
+   console.error("Error listing phone numbers:", error);
+ }
 };
-
-export default CustomChatbot;
+/**
+* Function to get real-time metrics
+*/
+const getRealTimeMetrics = async () => {
+ try {
+   const metrics = [
+     { Name: "AGENTS_ONLINE", Unit: "COUNT" },
+     { Name: "AGENTS_AVAILABLE", Unit: "COUNT" },
+     { Name: "AGENTS_STAFFED", Unit: "COUNT" },
+     { Name: "CONTACTS_IN_QUEUE", Unit: "COUNT" },
+     { Name: "OLDEST_CONTACT_AGE", Unit: "SECONDS" },
+   ];
+   const command = new GetCurrentMetricDataCommand({
+     InstanceId: instanceId,
+     CurrentMetrics: metrics,
+     Filters: {
+       Channels: ["VOICE"],
+       Queues: ["*"], // Fetch metrics for all queues
+     },
+   });
+   const response = await client.send(command);
+   console.log("Real-time Metrics Data:", JSON.stringify(response.MetricResults, null, 2));
+   return response.MetricResults;
+ } catch (error) {
+   console.error("Error fetching real-time metrics:", error);
+ }
+};
+/**
+* Function to get historical metrics for the past 30 days on a daily basis
+*/
+const getHistoricalMetrics = async () => {
+ try {
+   const metrics = [
+     { Name: "AGENTS_ONLINE", Unit: "COUNT" },
+     { Name: "AGENTS_AVAILABLE", Unit: "COUNT" },
+     { Name: "CONTACTS_QUEUED", Unit: "COUNT" },
+     { Name: "CONTACTS_HANDLED", Unit: "COUNT" },
+     { Name: "AVG_HANDLE_TIME", Unit: "SECONDS" },
+   ];
+   const today = new Date();
+   today.setUTCHours(0, 0, 0, 0);
+   const thirtyDaysAgo = new Date(today);
+   thirtyDaysAgo.setDate(today.getDate() - 30);
+   const dailyMetrics = [];
+   // Loop through each day in the past 30 days
+   for (let day = 0; day < 30; day++) {
+     const startTime = new Date(thirtyDaysAgo);
+     startTime.setDate(thirtyDaysAgo.getDate() + day);
+     const endTime = new Date(startTime);
+     endTime.setUTCHours(23, 59, 59, 999);
+     const command = new GetMetricDataCommand({
+       InstanceId: instanceId,
+       StartTime: startTime,
+       EndTime: endTime,
+       HistoricalMetrics: metrics,
+       Filters: {
+         Channels: ["VOICE"],
+         Queues: ["*"], // Fetch metrics for all queues
+       },
+       Groupings: ["CHANNEL"], // Grouping by channel for better analysis
+     });
+     const response = await client.send(command);
+     dailyMetrics.push({
+       date: startTime.toISOString().split("T")[0],
+       metrics: response.MetricResults,
+     });
+     console.log(`Metrics for ${startTime.toISOString().split("T")[0]}:`, JSON.stringify(response.MetricResults, null, 2));
+   }
+   return dailyMetrics;
+ } catch (error) {
+   console.error("Error fetching historical metrics:", error);
+ }
+};
+/**
+* Main function to execute the tracking of metrics
+*/
+const trackMetrics = async () => {
+ console.log("Fetching phone numbers...");
+ await listPhoneNumbers();
+ console.log("\nFetching real-time metrics...");
+ const realTimeData = await getRealTimeMetrics();
+ console.log("\nFetching historical metrics for the past 30 days...");
+ const historicalData = await getHistoricalMetrics();
+ console.log("\nCompleted Metrics Tracking");
+ console.log("Real-Time Data:", JSON.stringify(realTimeData, null, 2));
+ console.log("Historical Data (Last 30 Days):", JSON.stringify(historicalData, null, 2));
+};
+// Execute the main function
+trackMetrics();
