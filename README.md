@@ -152,3 +152,5 @@ try {
 } catch (error) {
   console.error("Error generating report:", error);
   return { statusCode: 500, body: JSON.stringify({ error: error.message }) };
+}
+};
