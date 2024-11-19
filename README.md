@@ -199,6 +199,8 @@ export const handler = async (event) => {
  }
 };
 
+snippet code for historical data
+
 import { ConnectClient, GetMetricDataV2Command } from "@aws-sdk/client-connect"; // ES Modules import
 // const { ConnectClient, GetMetricDataV2Command } = require("@aws-sdk/client-connect"); // CommonJS import
 const client = new ConnectClient(config);
