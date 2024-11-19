@@ -1,32 +1,28 @@
-
-
 import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
 import { ConnectClient, GetCurrentMetricDataCommand, ListQueuesCommand } from "@aws-sdk/client-connect";
 // Create an S3 client
 const s3Client = new S3Client({ region: 'us-east-1' });
 // The Connect client
 const client = new ConnectClient({ region: 'us-east-1' });
-// // Function to convert data to CSV format
-// function convertToCSV(data) {
-//  const header = Object.keys(data[0]).join(',') + '\n';
-//  const rows = data.map(row => Object.values(row).join(',')).join('\n');
-//  return header + rows;
-// }
-
-// Function to convert cumulative data to CSV format
-function convertCumulativeToCSV(data) {
- const header = ['Metric Name', 'Metric Value'].join(',') + '\n';
- const rows = data.map(row => `${row.metricName},${row.metricValue}`).join('\n');
+// Function to convert cumulative data to CSV format with dynamic headers
+function convertCumulativeToCSV(data, metricNames) {
+ const header = ['Metric Name', ...metricNames].join(',') + '\n';
+ const rows = metricNames.map((metricName) => {
+   const row = [metricName, ...data[metricName]].join(',');
+   return row;
+ }).join('\n');
  return header + rows;
 }
-// Function to convert daily data to CSV format
-function convertDailyToCSV(data) {
- const header = ['Date','QueueID','MetricName','MetricValue'].join(',') + '\n';
+// Function to convert daily data to CSV format with metric names as headers
+function convertDailyToCSV(data, metricNames) {
+ const header = ['Date', 'QueueID', 'AgentID', ...metricNames].join(',') + '\n';
  const rows = data.flatMap(day =>
    day.metrics.flatMap(queue =>
      queue.metrics.map(
        metric =>
-         `${day.date},${queue.queueId},${metric.metricName},${metric.metricValue}`
+         `${day.date},${queue.queueId},${queue.agentId},${metricNames.map(name => {
+           return metric.name === name ? metric.value : '';
+         }).join(',')}`
      )
    )
  ).join('\n');
@@ -56,23 +52,23 @@ function getDateRange(startDate, endDate) {
  }
  return dates;
 }
-// Function to aggregate metrics
-function aggregateMetrics(dailyMetrics) {
+// Function to aggregate metrics for cumulative data
+function aggregateMetrics(dailyMetrics, metricNames) {
  const aggregated = {};
+ metricNames.forEach((metricName) => {
+   aggregated[metricName] = [];
+ });
+ // Aggregate the data by summing up the values for each metric
  dailyMetrics.forEach((day) => {
-   day.metrics.forEach((metric) => {
-     metric.metrics.forEach(({ metricName, metricValue }) => {
-       if (!aggregated[metricName]) {
-         aggregated[metricName] = 0;
+   day.metrics.forEach((queue) => {
+     queue.metrics.forEach(({ metricName, metricValue }) => {
+       if (metricNames.includes(metricName)) {
+         aggregated[metricName].push(metricValue);
        }
-       aggregated[metricName] += metricValue;
      });
    });
  });
- return Object.entries(aggregated).map(([metricName, metricValue]) => ({
-   metricName,
-   metricValue,
- }));
+ return aggregated;
 }
 // Function to list all queue IDs
 const fetchAllQueueIds = async () => {
@@ -117,9 +113,13 @@ const fetchMetrics = async (filters, groupings, metrics, dateRange) => {
            metricName: collection.Metric.Name,
            metricValue: collection.Value,
          }));
+         // Safely access agent and queue ID
+         const agentId = result.Dimensions.Agent && result.Dimensions.Agent.Id ? result.Dimensions.Agent.Id : "Unknown Agent";
+         const queueId = result.Dimensions.Queue && result.Dimensions.Queue.Id ? result.Dimensions.Queue.Id : "Unknown Queue";
          metricsForDate.metrics.push({
-           queueId: result.Dimensions.Queue.Id || "Unknown Queue",
-           queueName: result.Dimensions.Queue.Name || "Unknown Queue",
+           queueId: queueId,
+           queueName: result.Dimensions.Queue && result.Dimensions.Queue.Name ? result.Dimensions.Queue.Name : "Unknown Queue",
+           agentId: agentId,
            metrics: resultMetrics,
          });
        });
@@ -165,41 +165,27 @@ export const handler = async (event) => {
    { Name: "AGENTS_ERROR", Unit: "COUNT" },
    { Name: "CONTACTS_SCHEDULED", Unit: "COUNT" },
    { Name: "OLDEST_CONTACT_AGE", Unit: "SECONDS" },
+   { Name: "AGENTS_AFTER_CONTACT_WORK", Unit: "COUNT" },
+   { Name: "AGENTS_NON_PRODUCTIVE", Unit: "COUNT" },
+   { Name: "AGENTS_ON_CONTACT", Unit: "COUNT" },
+   { Name: "AGENTS_STAFFED", Unit: "COUNT" },
+   { Name: "SLOTS_ACTIVE", Unit: "COUNT" },
+   { Name: "SLOTS_AVAILABLE", Unit: "COUNT" },
  ];
-//  try {
-//    const dailyMetrics = await fetchMetrics(filters, groupings, metrics, dateRange);
-//    let reportData;
-//    if (isCumulativeReport) {
-//      reportData = aggregateMetrics(dailyMetrics);
-//    } else {
-//      reportData = dailyMetrics;
-//    }
-//    // Convert the report to the chosen format (CSV or JSON)
-//    const fileContent = format === 'csv' ? convertToCSV(reportData) : convertToJSON(reportData);
-//    const fileName = `${isCumulativeReport ? 'cumulative' : 'daily'}-report-${Date.now()}.${format}`;
-//    await uploadToS3(fileContent, bucketName, fileName);
-//    return {
-//      statusCode: 200,
-//      body: JSON.stringify({
-//        message: "File uploaded successfully.",
-//        fileUrl: `https://s3.amazonaws.com/${bucketName}/${fileName}`,
-//      }),
-//    };
-//  } catch (error) {
-//    console.error("Error generating report:", error);
-//    return { statusCode: 500, body: JSON.stringify({ error: error.message }) };
-//  }
-// };
-try {
+ const metricNames = metrics.map(m => m.Name);
+ try {
    const dailyMetrics = await fetchMetrics(filters, groupings, metrics, dateRange);
    let reportData;
    let fileContent;
    if (isCumulativeReport) {
-     reportData = aggregateMetrics(dailyMetrics);
-     fileContent = format === 'csv' ? convertCumulativeToCSV(reportData) : convertToJSON(reportData);
+     // Aggregate metrics for cumulative data
+     reportData = aggregateMetrics(dailyMetrics, metricNames);
+     // Prepare cumulative CSV
+     fileContent = format === 'csv' ? convertCumulativeToCSV(reportData, metricNames) : convertToJSON(reportData);
    } else {
+     // Prepare daily data CSV
      reportData = dailyMetrics;
-     fileContent = format === 'csv' ? convertDailyToCSV(reportData) : convertToJSON(reportData);
+     fileContent = format === 'csv' ? convertDailyToCSV(reportData, metricNames) : convertToJSON(reportData);
    }
    const fileName = `${isCumulativeReport ? 'cumulative' : 'daily'}-report-${Date.now()}.${format}`;
    await uploadToS3(fileContent, bucketName, fileName);
@@ -216,3 +202,14 @@ try {
    return { statusCode: 500, body: JSON.stringify({ error: error.message }) };
  }
 };
+
+Date	QueueID	AgentID	AGENTS_ONLINE	AGENTS_AVAILABLE	CONTACTS_IN_QUEUE	AGENTS_ERROR	CONTACTS_SCHEDULED	OLDEST_CONTACT_AGE
+2024-10-08	e212c573-84cb-44d6-a538-68f77f5d0183	Unknown	Agent					
+2024-10-08	e212c573-84cb-44d6-a538-68f77f5d0183	Unknown	Agent					
+2024-10-08	e212c573-84cb-44d6-a538-68f77f5d0183	Unknown	Agent					
+2024-10-08	e212c573-84cb-44d6-a538-68f77f5d0183	Unknown	Agent					
+2024-10-08	e212c573-84cb-44d6-a538-68f77f5d0183	Unknown	Agent					
+2024-10-08	e212c573-84cb-44d6-a538-68f77f5d0183	Unknown	Agent					
+2024-10-08	9783145b-f6e4-4d42-9414-eb8943c0d9aa	Unknown	Agent					
+2024-10-08	9783145b-f6e4-4d42-9414-eb8943c0d9aa	Unknown	Agent					
+![Uploading image.png…]()
