@@ -1,59 +1,3 @@
-// //  try {
-// //    const dailyMetrics = await fetchMetrics(filters, groupings, metrics, dateRange);
-// //    let reportData;
-// //    if (isCumulativeReport) {
-// //      reportData = aggregateMetrics(dailyMetrics);
-// //    } else {
-// //      reportData = dailyMetrics;
-// //    }
-// //    // Convert the report to the chosen format (CSV or JSON)
-// //    const fileContent = format === 'csv' ? convertToCSV(reportData) : convertToJSON(reportData);
-// //    const fileName = `${isCumulativeReport ? 'cumulative' : 'daily'}-report-${Date.now()}.${format}`;
-// //    await uploadToS3(fileContent, bucketName, fileName);
-// //    return {
-// //      statusCode: 200,
-// //      body: JSON.stringify({
-// //        message: "File uploaded successfully.",
-// //        fileUrl: `https://s3.amazonaws.com/${bucketName}/${fileName}`,
-// //      }),
-// //    };
-// //  } catch (error) {
-// //    console.error("Error generating report:", error);
-// //    return { statusCode: 500, body: JSON.stringify({ error: error.message }) };
-// //  }
-// // };
-// try {
-//    const dailyMetrics = await fetchMetrics(filters, groupings, metrics, dateRange);
-//    let reportData;
-//    let fileContent;
-//    if (isCumulativeReport) {
-//      reportData = aggregateMetrics(dailyMetrics);
-//      fileContent = format === 'csv' ? convertCumulativeToCSV(reportData) : convertToJSON(reportData);
-//    } else {
-//      reportData = dailyMetrics;
-//      fileContent = format === 'csv' ? convertDailyToCSV(reportData) : convertToJSON(reportData);
-//    }
-//    const fileName = `${isCumulativeReport ? 'cumulative' : 'daily'}-report-${Date.now()}.${format}`;
-//    await uploadToS3(fileContent, bucketName, fileName);
-//    const fileUrl = `https://s3.amazonaws.com/${bucketName}/${fileName}`;
-//    return {
-//      statusCode: 200,
-//      body: JSON.stringify({
-//        message: "File uploaded successfully.",
-//        fileUrl: fileUrl,
-//      }),
-//    };
-//  } catch (error) {
-//    console.error("Error generating report:", error);
-//    return { statusCode: 500, body: JSON.stringify({ error: error.message }) };
-//  }
-// };
-
-
-this is the json and csv converting code.
-
-please update the below code.
-
 import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
 import { ConnectClient, GetCurrentMetricDataCommand, ListQueuesCommand } from "@aws-sdk/client-connect";
 // Create an S3 client
@@ -71,6 +15,18 @@ function convertDailyToCSV(data, metricNames) {
      }).join(',');
      return `${day.date},${queue.queueId},${metricsRow}`;
    }).join('\n');
+ }).join('\n');
+ return header + rows;
+}
+// Function to convert cumulative data to CSV format
+function convertCumulativeToCSV(data, metricNames) {
+ const header = ['QueueID', 'CumulativeMetric', ...metricNames].join(',') + '\n';
+ const rows = data.map(queue => {
+   const metricsRow = metricNames.map(name => {
+     const metric = queue.metrics.find(m => m.metricName === name);
+     return metric ? metric.metricValue : ''; // If metric not found, leave blank
+   }).join(',');
+   return `${queue.queueId},${queue.cumulativeMetric},${metricsRow}`;
  }).join('\n');
  return header + rows;
 }
@@ -160,9 +116,32 @@ const fetchMetrics = async (filters, groupings, metrics, dateRange) => {
  }
  return dailyMetrics;
 };
+// Function to aggregate daily metrics into cumulative metrics
+function aggregateMetrics(dailyMetrics) {
+ const cumulativeData = [];
+ dailyMetrics.forEach(day => {
+   day.metrics.forEach(queue => {
+     let queueData = cumulativeData.find(item => item.queueId === queue.queueId);
+     if (!queueData) {
+       queueData = { queueId: queue.queueId, cumulativeMetric: 0, metrics: [] };
+       cumulativeData.push(queueData);
+     }
+     queue.metrics.forEach(metric => {
+       queueData.cumulativeMetric += metric.metricValue;
+       let existingMetric = queueData.metrics.find(m => m.metricName === metric.metricName);
+       if (existingMetric) {
+         existingMetric.metricValue += metric.metricValue;
+       } else {
+         queueData.metrics.push({ metricName: metric.metricName, metricValue: metric.metricValue });
+       }
+     });
+   });
+ });
+ return cumulativeData;
+}
 // Main handler function
 export const handler = async (event) => {
- const { startDate, endDate, format } = event;
+ const { startDate, endDate, format, isCumulativeReport } = event;
  const instanceId = process.env.InstanceId;
  const bucketName = process.env.S3_BUCKET_NAME;
  if (!bucketName) {
@@ -197,8 +176,14 @@ export const handler = async (event) => {
  try {
    const dailyMetrics = await fetchMetrics(filters, groupings, metrics, dateRange);
    const metricNames = metrics.map(m => m.Name);
-   let fileContent = convertDailyToCSV(dailyMetrics, metricNames);
-   const fileName = `daily-report-${Date.now()}.${format}`;
+   let fileContent;
+   if (isCumulativeReport) {
+     const cumulativeData = aggregateMetrics(dailyMetrics); // Assuming aggregateMetrics processes the dailyMetrics to create cumulative data
+     fileContent = format === 'csv' ? convertCumulativeToCSV(cumulativeData, metricNames) : convertToJSON(cumulativeData);
+   } else {
+     fileContent = format === 'csv' ? convertDailyToCSV(dailyMetrics, metricNames) : convertToJSON(dailyMetrics);
+   }
+   const fileName = `${isCumulativeReport ? 'cumulative' : 'daily'}-report-${Date.now()}.${format}`;
    await uploadToS3(fileContent, bucketName, fileName);
    const fileUrl = `https://s3.amazonaws.com/${bucketName}/${fileName}`;
    return {
@@ -214,4 +199,89 @@ export const handler = async (event) => {
  }
 };
 
-the cumulative and json respnse I am not getting, csv is correct. 
+import { ConnectClient, GetMetricDataV2Command } from "@aws-sdk/client-connect"; // ES Modules import
+// const { ConnectClient, GetMetricDataV2Command } = require("@aws-sdk/client-connect"); // CommonJS import
+const client = new ConnectClient(config);
+const input = { // GetMetricDataV2Request
+  ResourceArn: "STRING_VALUE", // required
+  StartTime: new Date("TIMESTAMP"), // required
+  EndTime: new Date("TIMESTAMP"), // required
+  Interval: { // IntervalDetails
+    TimeZone: "STRING_VALUE",
+    IntervalPeriod: "FIFTEEN_MIN" || "THIRTY_MIN" || "HOUR" || "DAY" || "WEEK" || "TOTAL",
+  },
+  Filters: [ // FiltersV2List // required
+    { // FilterV2
+      FilterKey: "STRING_VALUE",
+      FilterValues: [ // FilterValueList
+        "STRING_VALUE",
+      ],
+    },
+  ],
+  Groupings: [ // GroupingsV2
+    "STRING_VALUE",
+  ],
+  Metrics: [ // MetricsV2 // required
+    { // MetricV2
+      Name: "STRING_VALUE",
+      Threshold: [ // ThresholdCollections
+        { // ThresholdV2
+          Comparison: "STRING_VALUE",
+          ThresholdValue: Number("double"),
+        },
+      ],
+      MetricFilters: [ // MetricFiltersV2List
+        { // MetricFilterV2
+          MetricFilterKey: "STRING_VALUE",
+          MetricFilterValues: [ // MetricFilterValueList
+            "STRING_VALUE",
+          ],
+          Negate: true || false,
+        },
+      ],
+    },
+  ],
+  NextToken: "STRING_VALUE",
+  MaxResults: Number("int"),
+};
+const command = new GetMetricDataV2Command(input);
+const response = await client.send(command);
+// { // GetMetricDataV2Response
+//   NextToken: "STRING_VALUE",
+//   MetricResults: [ // MetricResultsV2
+//     { // MetricResultV2
+//       Dimensions: { // DimensionsV2Map
+//         "<keys>": "STRING_VALUE",
+//       },
+//       MetricInterval: { // MetricInterval
+//         Interval: "FIFTEEN_MIN" || "THIRTY_MIN" || "HOUR" || "DAY" || "WEEK" || "TOTAL",
+//         StartTime: new Date("TIMESTAMP"),
+//         EndTime: new Date("TIMESTAMP"),
+//       },
+//       Collections: [ // MetricDataCollectionsV2
+//         { // MetricDataV2
+//           Metric: { // MetricV2
+//             Name: "STRING_VALUE",
+//             Threshold: [ // ThresholdCollections
+//               { // ThresholdV2
+//                 Comparison: "STRING_VALUE",
+//                 ThresholdValue: Number("double"),
+//               },
+//             ],
+//             MetricFilters: [ // MetricFiltersV2List
+//               { // MetricFilterV2
+//                 MetricFilterKey: "STRING_VALUE",
+//                 MetricFilterValues: [ // MetricFilterValueList
+//                   "STRING_VALUE",
+//                 ],
+//                 Negate: true || false,
+//               },
+//             ],
+//           },
+//           Value: Number("double"),
+//         },
+//       ],
+//     },
+//   ],
+// };
+
