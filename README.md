@@ -1,3 +1,59 @@
+// //  try {
+// //    const dailyMetrics = await fetchMetrics(filters, groupings, metrics, dateRange);
+// //    let reportData;
+// //    if (isCumulativeReport) {
+// //      reportData = aggregateMetrics(dailyMetrics);
+// //    } else {
+// //      reportData = dailyMetrics;
+// //    }
+// //    // Convert the report to the chosen format (CSV or JSON)
+// //    const fileContent = format === 'csv' ? convertToCSV(reportData) : convertToJSON(reportData);
+// //    const fileName = `${isCumulativeReport ? 'cumulative' : 'daily'}-report-${Date.now()}.${format}`;
+// //    await uploadToS3(fileContent, bucketName, fileName);
+// //    return {
+// //      statusCode: 200,
+// //      body: JSON.stringify({
+// //        message: "File uploaded successfully.",
+// //        fileUrl: `https://s3.amazonaws.com/${bucketName}/${fileName}`,
+// //      }),
+// //    };
+// //  } catch (error) {
+// //    console.error("Error generating report:", error);
+// //    return { statusCode: 500, body: JSON.stringify({ error: error.message }) };
+// //  }
+// // };
+// try {
+//    const dailyMetrics = await fetchMetrics(filters, groupings, metrics, dateRange);
+//    let reportData;
+//    let fileContent;
+//    if (isCumulativeReport) {
+//      reportData = aggregateMetrics(dailyMetrics);
+//      fileContent = format === 'csv' ? convertCumulativeToCSV(reportData) : convertToJSON(reportData);
+//    } else {
+//      reportData = dailyMetrics;
+//      fileContent = format === 'csv' ? convertDailyToCSV(reportData) : convertToJSON(reportData);
+//    }
+//    const fileName = `${isCumulativeReport ? 'cumulative' : 'daily'}-report-${Date.now()}.${format}`;
+//    await uploadToS3(fileContent, bucketName, fileName);
+//    const fileUrl = `https://s3.amazonaws.com/${bucketName}/${fileName}`;
+//    return {
+//      statusCode: 200,
+//      body: JSON.stringify({
+//        message: "File uploaded successfully.",
+//        fileUrl: fileUrl,
+//      }),
+//    };
+//  } catch (error) {
+//    console.error("Error generating report:", error);
+//    return { statusCode: 500, body: JSON.stringify({ error: error.message }) };
+//  }
+// };
+
+
+this is the json and csv converting code.
+
+please update the below code.
+
 import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
 import { ConnectClient, GetCurrentMetricDataCommand, ListQueuesCommand } from "@aws-sdk/client-connect";
 // Create an S3 client
@@ -157,3 +213,5 @@ export const handler = async (event) => {
    return { statusCode: 500, body: JSON.stringify({ error: error.message }) };
  }
 };
+
+the cumulative and json respnse I am not getting, csv is correct. 
