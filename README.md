@@ -1,1 +1,6 @@
-ERROR	Error fetching metrics for date 2024-11-11: AccessDeniedException: User: arn:aws:sts::768637739934:assumed-role/historicalMetricsLambda-role-jmzyjcfk/historicalMetricsLambda is not authorized to perform: connect:* on resource: * with an explicit deny
+{
+  "statusCode": 500,
+  "body": "{\"error\":\"Failed to process the CSV file\",\"details\":\"The \\\"transform.readable\\\" property must be an instance of ReadableStream. Received type boolean (true)\"}"
+}
+
+Function Logs
