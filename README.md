@@ -2,21 +2,21 @@ import { S3Client, GetObjectCommand } from '@aws-sdk/client-s3';
 import csvParser from 'csv-parser';
 import { ConnectClient, StartOutboundVoiceContactCommand } from '@aws-sdk/client-connect';
 
-// Initialize S3 and Connect clients
+
 const s3 = new S3Client();
 const connect = new ConnectClient();
 
 // Lambda handler function
 export const handler = async (event) => {
-  const bucketName = 'customeroutbound-data'; // Replace with your bucket name
-  const fileName = 'CustomerOutboundNumbers.csv'; // Replace with your CSV file key
-  const contactFlowId = 'YOUR-CONTACT-FLOW-ID'; // Replace with your Contact Flow ID
-  const instanceId = 'YOUR-CONNECT-INSTANCE-ID'; // Replace with your Connect Instance ID
-  const queueId = 'YOUR-QUEUE-ID'; // Replace with your Queue ID
-  const sourcePhoneNumber = 'YOUR-SOURCE-PHONE-NUMBER'; // Replace with your Source Phone Number
+  const bucketName = 'customeroutbound-data'; 
+  const fileName = 'CustomerOutboundNumber.csv'; 
+  const contactFlowId = '09f2c3c7-c424-4ad2-be1f-246be15b51a4'; 
+  const instanceId = 'bd16d991-11c8-4d1e-9900-edd5ed4a9b21'; 
+  const queueId = 'f8c742b9-b5ef-4948-8bbf-9a33c892023f'; 
+   
 
   try {
-    // Fetch the CSV file from S3
+    
     const params = { Bucket: bucketName, Key: fileName };
     const command = new GetObjectCommand(params);
     const response = await s3.send(command);
@@ -26,7 +26,7 @@ export const handler = async (event) => {
       throw new Error("No stream data found in the S3 object.");
     }
 
-    // Parse CSV data
+    
     const phoneNumbers = [];
     const results = await new Promise((resolve, reject) => {
       const rows = [];
@@ -34,7 +34,7 @@ export const handler = async (event) => {
         .pipe(csvParser())
         .on('data', (row) => {
           if (row.PhoneNumber) {
-            phoneNumbers.push(row.PhoneNumber); // Assuming the CSV column is named "PhoneNumber"
+            phoneNumbers.push(row.PhoneNumber); 
           }
           rows.push(row);
         })
@@ -50,8 +50,8 @@ export const handler = async (event) => {
         DestinationPhoneNumber: destinationPhoneNumber,
         ContactFlowId: contactFlowId,
         InstanceId: instanceId,
-        QueueId: queueId,
-        SourcePhoneNumber: sourcePhoneNumber,
+        QueueId: queueId
+        
       };
 
       const voiceCommand = new StartOutboundVoiceContactCommand(input);
