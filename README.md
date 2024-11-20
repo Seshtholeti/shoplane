@@ -52,3 +52,58 @@ export const handler = async (event) => {
    };
  }
 };
+
+
+
+use this api below in the destination phone number you can use the the result array an in that we have the ohone numbers.
+
+
+import { ConnectClient, StartOutboundVoiceContactCommand } from "@aws-sdk/client-connect"; // ES Modules import
+// const { ConnectClient, StartOutboundVoiceContactCommand } = require("@aws-sdk/client-connect"); // CommonJS import
+const client = new ConnectClient(config);
+const input = { // StartOutboundVoiceContactRequest
+  Name: "STRING_VALUE",
+  Description: "STRING_VALUE",
+  References: { // ContactReferences
+    "<keys>": { // Reference
+      Value: "STRING_VALUE", // required
+      Type: "URL" || "ATTACHMENT" || "NUMBER" || "STRING" || "DATE" || "EMAIL", // required
+    },
+  },
+  RelatedContactId: "STRING_VALUE",
+  DestinationPhoneNumber: "STRING_VALUE", // required
+  ContactFlowId: "STRING_VALUE", // required
+  InstanceId: "STRING_VALUE", // required
+  ClientToken: "STRING_VALUE",
+  SourcePhoneNumber: "STRING_VALUE",
+  QueueId: "STRING_VALUE",
+  Attributes: { // Attributes
+    "<keys>": "STRING_VALUE",
+  },
+  AnswerMachineDetectionConfig: { // AnswerMachineDetectionConfig
+    EnableAnswerMachineDetection: true || false,
+    AwaitAnswerMachinePrompt: true || false,
+  },
+  CampaignId: "STRING_VALUE",
+  TrafficType: "GENERAL" || "CAMPAIGN",
+};
+const command = new StartOutboundVoiceContactCommand(input);
+const response = await client.send(command);
+// { // StartOutboundVoiceContactResponse
+//   ContactId: "STRING_VALUE",
+// };
+
+for inputs pls refer the below code
+
+contactId: '09f2c3c7-c424-4ad2-be1f-246be15b51a4'
+
+response = client.start_outbound_voice_contact(
+        DestinationPhoneNumber=destination_phone_number,
+        ContactFlowId=contact_flow_id,
+        InstanceId='bd16d991-11c8-4d1e-9900-edd5ed4a9b21',
+        QueueId='f8c742b9-b5ef-4948-8bbf-9a33c892023f',
+        # AnswerMachineDetectionConfig={
+        #     'EnableAnswerMachineDetection': False,
+        #     'AwaitAnswerMachinePrompt': False
+        # }
+
