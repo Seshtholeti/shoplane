@@ -1,26 +1,74 @@
-Response
-{
-  "statusCode": 500,
-  "body": "{\"error\":\"UnknownError\",\"details\":\"DestinationNotAllowedException: UnknownError\\n    at de_DestinationNotAllowedExceptionRes (/var/runtime/node_modules/@aws-sdk/client-connect/dist-cjs/index.js:9873:21)\\n    at de_CommandError (/var/runtime/node_modules/@aws-sdk/client-connect/dist-cjs/index.js:9797:19)\\n    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)\\n    at async /var/runtime/node_modules/@aws-sdk/node_modules/@smithy/middleware-serde/dist-cjs/index.js:35:20\\n    at async /var/runtime/node_modules/@aws-sdk/node_modules/@smithy/core/dist-cjs/index.js:165:18\\n    at async /var/runtime/node_modules/@aws-sdk/node_modules/@smithy/middleware-retry/dist-cjs/index.js:320:38\\n    at async /var/runtime/node_modules/@aws-sdk/middleware-logger/dist-cjs/index.js:34:22\\n    at async Runtime.handler (file:///var/task/index.mjs:57:27)\"}"
-}
+import { S3Client, GetObjectCommand } from '@aws-sdk/client-s3';
+import csvParser from 'csv-parser';
+import { ConnectClient, StartOutboundVoiceContactCommand } from '@aws-sdk/client-connect';
+const s3 = new S3Client();
+const connect = new ConnectClient();
+export const handler = async (event) => {
+ const bucketName = 'customeroutbound-data';
+ const fileName = 'CustomerOutboundNumber.csv';
+ const contactFlowId = '09f2c3c7-c424-4ad2-be1f-246be15b51a4';
+ const instanceId = 'bd16d991-11c8-4d1e-9900-edd5ed4a9b21';
+ const queueId = 'f8c742b9-b5ef-4948-8bbf-9a33c892023f';
+ try {
+   const params = { Bucket: bucketName, Key: fileName };
+   const command = new GetObjectCommand(params);
+   const response = await s3.send(command);
+   const stream = response.Body;
+   if (!stream) {
+     throw new Error("No stream data found in the S3 object.");
+   }
+   const phoneNumbers = [];
+   await new Promise((resolve, reject) => {
+     stream
+       .pipe(csvParser({ separator: ';' })) 
+       .on('data', (row) => {
+         console.log('Row parsed:', row);
+         const phoneNumber = row.PhoneNumber || row['Name;PhoneNumber']?.split(';')[1]?.trim();
+         if (phoneNumber) {
+           // Format phone number to E.164 format
+           let formattedNumber = phoneNumber.replace(/\D/g, ''); 
+           if (formattedNumber.length === 10) {
+             formattedNumber = `+91${formattedNumber}`; 
+           } else if (formattedNumber.length === 11) {
+             formattedNumber = `+1${formattedNumber}`; 
+           }
+           phoneNumbers.push(formattedNumber);
+           console.log('PhoneNumber formatted:', formattedNumber);
+         } else {
+           console.log('PhoneNumber not found in row:', row);
+         }
+       })
+       .on('end', resolve)
+       .on('error', reject);
+   });
+   if (phoneNumbers.length === 0) {
+     throw new Error('No phone numbers found in the CSV file.');
+   }
+   console.log('Phone numbers parsed and formatted:', phoneNumbers);
+   // Initiate outbound calls for each phone number
+   for (const destinationPhoneNumber of phoneNumbers) {
+     const input = {
+       DestinationPhoneNumber: destinationPhoneNumber,
+       ContactFlowId: contactFlowId,
+       InstanceId: instanceId,
+       QueueId: queueId,
+     };
+     const voiceCommand = new StartOutboundVoiceContactCommand(input);
+     const callResponse = await connect.send(voiceCommand);
+     console.log(`Call initiated for ${destinationPhoneNumber}:`, callResponse);
+   }
+   return {
+     statusCode: 200,
+     body: JSON.stringify({ message: 'Outbound calls initiated successfully' }),
+   };
+ } catch (error) {
+   console.error('Error processing the Lambda function:', error);
+   return {
+     statusCode: 500,
+     body: JSON.stringify({ error: error.message, details: error.stack }),
+   };
+ }
+};
 
-Function Logs
-START RequestId: d3cc7999-3405-495a-b322-f5aad0a44043 Version: $LATEST
-2024-11-20T11:53:05.289Z	d3cc7999-3405-495a-b322-f5aad0a44043	INFO	Row parsed: { Name: 'Mohan', PhoneNumber: '9949921498' }
-2024-11-20T11:53:05.289Z	d3cc7999-3405-495a-b322-f5aad0a44043	INFO	PhoneNumber formatted: +919949921498
-2024-11-20T11:53:05.321Z	d3cc7999-3405-495a-b322-f5aad0a44043	INFO	Row parsed: { Name: 'Seshu', PhoneNumber: '8639694701' }
-2024-11-20T11:53:05.322Z	d3cc7999-3405-495a-b322-f5aad0a44043	INFO	PhoneNumber formatted: +918639694701
-2024-11-20T11:53:05.322Z	d3cc7999-3405-495a-b322-f5aad0a44043	INFO	Phone numbers parsed and formatted: [ '+919949921498', '+918639694701' ]
-2024-11-20T11:53:05.589Z	d3cc7999-3405-495a-b322-f5aad0a44043	ERROR	Error processing the Lambda function: DestinationNotAllowedException: UnknownError
-    at de_DestinationNotAllowedExceptionRes (/var/runtime/node_modules/@aws-sdk/client-connect/dist-cjs/index.js:9873:21)
-    at de_CommandError (/var/runtime/node_modules/@aws-sdk/client-connect/dist-cjs/index.js:9797:19)
-    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
-    at async /var/runtime/node_modules/@aws-sdk/node_modules/@smithy/middleware-serde/dist-cjs/index.js:35:20
-    at async /var/runtime/node_modules/@aws-sdk/node_modules/@smithy/core/dist-cjs/index.js:165:18
-    at async /var/runtime/node_modules/@aws-sdk/node_modules/@smithy/middleware-retry/dist-cjs/index.js:320:38
-    at async /var/runtime/node_modules/@aws-sdk/middleware-logger/dist-cjs/index.js:34:22
-    at async Runtime.handler (file:///var/task/index.mjs:57:27) {
-  '$fault': 'client',
-  '$metadata': {
-    httpStatusCode: 403,
-    requestId: '33c1c06b-c6c3-49ae-a315-aa34cc2b4bb4',
+
+we have to create a lambda which will trigger everyday morning from the csv file it will fetch the customer phone numbers , it will take the yesterday records from the amazon connect whether the call has been answered or not. print them in the console the result. if answered what is the agent id and all the required info similarly for not answered.
