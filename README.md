@@ -1,205 +1,135 @@
-import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
-import { ConnectClient, GetMetricDataV2Command, ListQueuesCommand } from "@aws-sdk/client-connect";
-// Create an S3 client
-const s3Client = new S3Client({ region: 'us-east-1' });
-// The Connect client
-const client = new ConnectClient({ region: 'us-east-1' });
-// Function to convert daily data to CSV format with metric names as headers
-function convertDailyToCSV(data, metricNames) {
- const header = ['Date', 'ResourceID', ...metricNames].join(',') + '\n';
- const rows = data.map(day => {
-   return day.metrics.map(resource => {
-     const metricsRow = metricNames.map(name => {
-       const metric = resource.metrics.find(m => m.metricName === name);
-       return metric ? metric.metricValue : ''; // If metric not found, leave blank
-     }).join(',');
-     return `${day.date},${resource.resourceId},${metricsRow}`;
-   }).join('\n');
- }).join('\n');
- return header + rows;
-}
-// Function to convert cumulative data to CSV format
-function convertCumulativeToCSV(data, metricNames) {
- const header = ['ResourceID', 'CumulativeMetric', ...metricNames].join(',') + '\n';
- const rows = data.map(resource => {
-   const metricsRow = metricNames.map(name => {
-     const metric = resource.metrics.find(m => m.metricName === name);
-     return metric ? metric.metricValue : ''; // If metric not found, leave blank
-   }).join(',');
-   return `${resource.resourceId},${resource.cumulativeMetric},${metricsRow}`;
- }).join('\n');
- return header + rows;
-}
-// Function to convert data to JSON format
-function convertToJSON(data) {
- return JSON.stringify(data, null, 2);
-}
-// Function to upload file to S3
-async function uploadToS3(fileContent, bucketName, fileName) {
- const command = new PutObjectCommand({
-   Bucket: bucketName,
-   Key: fileName,
-   Body: fileContent,
-   ContentType: fileName.endsWith('.csv') ? 'text/csv' : 'application/json',
- });
- await s3Client.send(command);
-}
-// Function to get date range
-function getDateRange(startDate, endDate) {
- const dates = [];
- let currentDate = new Date(startDate);
- while (currentDate <= new Date(endDate)) {
-   dates.push(new Date(currentDate).toISOString().split("T")[0]);
-   currentDate.setDate(currentDate.getDate() + 1);
- }
- return dates;
-}
-// Function to fetch all queue IDs
-const fetchAllQueueIds = async () => {
- const queueIds = [];
- try {
-   const listQueuesCommand = new ListQueuesCommand({
-     InstanceId: process.env.InstanceId,
-   });
-   const data = await client.send(listQueuesCommand);
-   if (data.QueueSummaryList && data.QueueSummaryList.length > 0) {
-     data.QueueSummaryList.forEach(queue => {
-       queueIds.push(queue.Id);
-     });
-   }
- } catch (err) {
-   console.error("Error fetching queue IDs:", err);
- }
- return queueIds;
-};
-// Function to fetch metrics for all resources (agents or queues) and return them grouped by date
-const fetchMetrics = async (filters, groupings, metrics, dateRange) => {
- const dailyMetrics = [];
- for (const date of dateRange) {
-   const input = {
-     ResourceArn: process.env.InstanceArn,
-     StartTime: new Date(`${date}T00:00:00Z`),
-     EndTime: new Date(`${date}T23:59:59Z`),
-     Interval: { IntervalPeriod: "DAY" },
-     Filters: filters,
-     Groupings: groupings,
-     Metrics: metrics,
-   };
-   try {
-     const command = new GetMetricDataV2Command(input);
-     const data = await client.send(command);
-     const metricsForDate = {
-       date,
-       metrics: [],
-     };
-     if (data.MetricResults && data.MetricResults.length > 0) {
-       data.MetricResults.forEach(result => {
-         const resourceId = result.Dimensions ? Object.values(result.Dimensions)[0] : "Unknown";
-         const resultMetrics = result.Collections.map(collection => ({
-           metricName: collection.Metric.Name,
-           metricValue: collection.Value,
-         }));
-         metricsForDate.metrics.push({
-           resourceId,
-           metrics: resultMetrics,
-         });
-       });
-     }
-     dailyMetrics.push(metricsForDate);
-   } catch (err) {
-     console.error(`Error fetching metrics for date ${date}:`, err);
-     dailyMetrics.push({
-       date,
-       errorMessage: err.message,
-     });
-   }
- }
- return dailyMetrics;
-};
-// Function to aggregate daily metrics into cumulative metrics
-function aggregateMetrics(dailyMetrics) {
- const cumulativeData = [];
- dailyMetrics.forEach(day => {
-   day.metrics.forEach(resource => {
-     let resourceData = cumulativeData.find(item => item.resourceId === resource.resourceId);
-     if (!resourceData) {
-       resourceData = { resourceId: resource.resourceId, cumulativeMetric: 0, metrics: [] };
-       cumulativeData.push(resourceData);
-     }
-     resource.metrics.forEach(metric => {
-       resourceData.cumulativeMetric += metric.metricValue;
-       let existingMetric = resourceData.metrics.find(m => m.metricName === metric.metricName);
-       if (existingMetric) {
-         existingMetric.metricValue += metric.metricValue;
-       } else {
-         resourceData.metrics.push({ metricName: metric.metricName, metricValue: metric.metricValue });
-       }
-     });
-   });
- });
- return cumulativeData;
-}
-// Main handler function
-export const handler = async (event) => {
- const { startDate, endDate, format, isCumulativeReport, resourceType } = event;
- const instanceArn = process.env.InstanceArn;
- const bucketName = process.env.S3_BUCKET_NAME;
- if (!bucketName) {
-   return { statusCode: 500, body: JSON.stringify({ error: "S3 bucket name is not set in environment variables." }) };
- }
- if (!startDate || !endDate || !resourceType) {
-   return { statusCode: 400, body: JSON.stringify({ error: "Missing required parameters in the event." }) };
- }
- const validResourceTypes = ["queues", "agents"];
- if (!validResourceTypes.includes(resourceType)) {
-   return { statusCode: 400, body: JSON.stringify({ error: `Invalid resource type: ${resourceType}. Must be one of: ${validResourceTypes.join(", ")}` }) };
- }
- const dateRange = getDateRange(startDate, endDate);
- const filters = resourceType === "queues" ? { FilterKey: "Queue", FilterValues: await fetchAllQueueIds() } : { FilterKey: "Agent", FilterValues: ["ALL"] };
- const groupings = [resourceType.toUpperCase()];
- const metrics = [
-   { Name: "CONTACTS_HANDLED", Unit: "COUNT" },
-   { Name: "AVG_HANDLE_TIME", Unit: "SECONDS" },
-   { Name: "CONTACTS_ABANDONED", Unit: "COUNT" },
- ];
- try {
-   const dailyMetrics = await fetchMetrics(filters, groupings, metrics, dateRange);
-   const metricNames = metrics.map(m => m.Name);
-   let fileContent;
-   if (isCumulativeReport) {
-     const cumulativeData = aggregateMetrics(dailyMetrics);
-     fileContent = format === 'csv' ? convertCumulativeToCSV(cumulativeData, metricNames) : convertToJSON(cumulativeData);
-   } else {
-     fileContent = format === 'csv' ? convertDailyToCSV(dailyMetrics, metricNames) : convertToJSON(dailyMetrics);
-   }
-   const fileName = `${resourceType}-${isCumulativeReport ? 'cumulative' : 'daily'}-report-${Date.now()}.${format}`;
-   await uploadToS3(fileContent, bucketName, fileName);
-   const fileUrl = `https://s3.amazonaws.com/${bucketName}/${fileName}`;
-   return {
-     statusCode: 200,
-     body: JSON.stringify({
-       message: "File uploaded successfully.",
-       fileUrl: fileUrl,
-     }),
-   };
- } catch (error) {
-   console.error("Error generating report:", error);
-   return { statusCode: 500, body: JSON.stringify({ error: error.message }) };
- }
+import { S3Client, GetObjectCommand } from '@aws-sdk/client-s3';
+import csvParser from 'csv-parser';
+import { ConnectClient, GetMetricDataV2Command } from '@aws-sdk/client-connect';
+import { subDays, format } from 'date-fns';
+
+const s3 = new S3Client();
+const connect = new ConnectClient();
+
+export const handler = async () => {
+  const bucketName = 'customeroutbound-data';
+  const fileName = 'CustomerOutboundNumber.csv';
+  const instanceId = 'bd16d991-11c8-4d1e-9900-edd5ed4a9b21'; 
+  const queueId = 'f8c742b9-b5ef-4948-8bbf-9a33c892023f'; 
+
+  // Calculate yesterday dynamically
+  const yesterdayStart = `${format(subDays(new Date(), 1), 'yyyy-MM-dd')}T00:00:00Z`;
+  const yesterdayEnd = `${format(subDays(new Date(), 1), 'yyyy-MM-dd')}T23:59:59Z`;
+
+  try {
+    // Fetch phone numbers from the CSV in S3
+    const params = { Bucket: bucketName, Key: fileName };
+    const command = new GetObjectCommand(params);
+    const response = await s3.send(command);
+    const stream = response.Body;
+
+    if (!stream) {
+      throw new Error('No stream data found in the S3 object.');
+    }
+
+    const phoneNumbers = [];
+    await new Promise((resolve, reject) => {
+      stream
+        .pipe(csvParser({ separator: ';' }))
+        .on('data', (row) => {
+          const phoneNumber = row.PhoneNumber || row['Name;PhoneNumber']?.split(';')[1]?.trim();
+          if (phoneNumber) {
+            let formattedNumber = phoneNumber.replace(/\D/g, '');
+            if (formattedNumber.length === 10) {
+              formattedNumber = `+91${formattedNumber}`;
+            } else if (formattedNumber.length === 11) {
+              formattedNumber = `+1${formattedNumber}`;
+            }
+            phoneNumbers.push(formattedNumber);
+          }
+        })
+        .on('end', resolve)
+        .on('error', reject);
+    });
+
+    if (phoneNumbers.length === 0) {
+      throw new Error('No phone numbers found in the CSV file.');
+    }
+
+    console.log('Phone numbers parsed and formatted:', phoneNumbers);
+
+    //  metrics data from Amazon Connect (for yesterday's calls)
+    const metricDataInput = {
+      ResourceArn: 'arn:aws:connect:us-east-1:768637739934:instance/bd16d991-11c8-4d1e-9900-edd5ed4a9b21', 
+      StartTime: new Date(yesterdayStart),
+      EndTime: new Date(yesterdayEnd),
+      Interval: { TimeZone: 'UTC', IntervalPeriod: 'DAY' },
+      Filters: [{ FilterKey: 'QueueId', FilterValues: [queueId] }],
+      Groupings: ['Queue'],
+      Metrics: [{ Name: 'CONTACTS_HANDLED' }, { Name: 'CONTACTS_ABANDONED' }],
+    };
+
+    const metricCommand = new GetMetricDataV2Command(metricDataInput);
+    const metricResponse = await connect.send(metricCommand);
+    console.log('Metrics Data:', JSON.stringify(metricResponse));
+
+   
+    const handledContacts = [];
+    const abandonedContacts = [];
+    const agentDetails = { handled: [], abandoned: [] };
+
+    for (const phoneNumber of phoneNumbers) {
+      const handledMetric = metricResponse.MetricResults?.find(
+        (result) => result.Dimensions.PhoneNumber === phoneNumber && result.Metric.Name === 'Contacts_Handled'
+      );
+      const abandonedMetric = metricResponse.MetricResults?.find(
+        (result) => result.Dimensions.PhoneNumber === phoneNumber && result.Metric.Name === 'Contacts_Abandoned'
+      );
+
+      if (handledMetric) {
+        handledContacts.push(phoneNumber);
+        const agentId = handledMetric.Dimensions.AgentId || 'N/A';
+        agentDetails.handled.push({ phoneNumber, agentId });
+      } else if (abandonedMetric) {
+        abandonedContacts.push(phoneNumber);
+        const agentId = abandonedMetric.Dimensions.AgentId || 'N/A';
+        agentDetails.abandoned.push({ phoneNumber, agentId });
+      }
+    }
+
+    //  results (handled vs abandoned contacts and agent IDs)
+    console.log('Handled Contacts:', handledContacts);
+    console.log('Handled Contact Agent Details:', agentDetails.handled);
+    console.log('Abandoned Contacts:', abandonedContacts);
+    console.log('Abandoned Contact Agent Details:', agentDetails.abandoned);
+
+    return {
+      statusCode: 200,
+      body: JSON.stringify({
+        message: 'Outbound call results printed successfully.',
+        handledContacts,
+        abandonedContacts,
+        agentDetails,
+      }),
+    };
+  } catch (error) {
+    console.error('Error processing the Lambda function:', error);
+    return {
+      statusCode: 500,
+      body: JSON.stringify({ error: error.message, details: error.stack }),
+    };
+  }
 };
 
-this is the error, this is what I am facig.
-2024-11-22T02:41:56.060Z	917d6004-0751-4eb8-9920-26f071fb6279	ERROR	Error fetching metrics for date 2024-11-10: AccessDeniedException: User: arn:aws:sts::768637739934:assumed-role/historicalMetricsLambda-role-jmzyjcfk/historicalMetricsLambda is not authorized to perform: connect:* on resource: * with an explicit deny
-    at de_AccessDeniedExceptionRes (/var/runtime/node_modules/@aws-sdk/client-connect/dist-cjs/index.js:9821:21)
-    at de_CommandError (/var/runtime/node_modules/@aws-sdk/client-connect/dist-cjs/index.js:9755:19)
-    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
-    at async /var/runtime/node_modules/@aws-sdk/node_modules/@smithy/middleware-serde/dist-cjs/index.js:35:20
-    at async /var/runtime/node_modules/@aws-sdk/node_modules/@smithy/core/dist-cjs/index.js:165:18
-    at async /var/runtime/node_modules/@aws-sdk/node_modules/@smithy/middleware-retry/dist-cjs/index.js:320:38
-    at async /var/runtime/node_modules/@aws-sdk/middleware-logger/dist-cjs/index.js:34:22
-    at async fetchMetrics (file:///var/task/index.mjs:90:19)
-    at async Runtime.handler (file:///var/task/index.mjs:166:25) {
-  '$fault': 'client',
-
-
-write a support ticket noes to amws team about this issue
+this is the error message
+{
+  "errorType": "Error",
+  "errorMessage": "Cannot find package 'date-fns' imported from /var/task/index.mjs",
+  "trace": [
+    "Error [ERR_MODULE_NOT_FOUND]: Cannot find package 'date-fns' imported from /var/task/index.mjs",
+    "    at packageResolve (node:internal/modules/esm/resolve:858:9)",
+    "    at moduleResolve (node:internal/modules/esm/resolve:931:18)",
+    "    at moduleResolveWithNodePath (node:internal/modules/esm/resolve:1173:14)",
+    "    at defaultResolve (node:internal/modules/esm/resolve:1216:79)",
+    "    at ModuleLoader.defaultResolve (node:internal/modules/esm/loader:542:12)",
+    "    at ModuleLoader.resolve (node:internal/modules/esm/loader:510:25)",
+    "    at ModuleLoader.getModuleJob (node:internal/modules/esm/loader:239:38)",
+    "    at ModuleWrap.<anonymous> (node:internal/modules/esm/module_job:96:40)",
+    "    at link (node:internal/modules/esm/module_job:95:36)"
+  ]
+}
