@@ -59,7 +59,7 @@ export const handler = async () => {
       StartTime: new Date(yesterdayStart),
       EndTime: new Date(yesterdayEnd),
       Interval: { TimeZone: 'UTC', IntervalPeriod: 'DAY' },
-      Filters: [{ FilterKey: 'AGENTS', FilterValues: [agentId] }],
+      Filters: [{ FilterKey: 'AGENTS', FilterValues: [queueId] }],
       Groupings: ['AGENT'],
       Metrics: [{ Name: 'CONTACTS_HANDLED' }, { Name: 'CONTACTS_ABANDONED' }],
     };
@@ -115,6 +115,7 @@ export const handler = async () => {
     };
   }
 };
+
 
 
 
