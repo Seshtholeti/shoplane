@@ -8,21 +8,22 @@ const client = new ConnectClient({ region: 'us-east-1' });
 
 // Function to fetch all queue IDs
 const fetchAllQueueIds = async () => {
-const queueIds = [];
-try {
-  const listQueuesCommand = new ListQueuesCommand({
-    InstanceId: process.env.InstanceId,
-  });
-  const data = await client.send(listQueuesCommand);
-  if (data.QueueSummaryList && data.QueueSummaryList.length > 0) {
-    data.QueueSummaryList.forEach(queue => {
-      queueIds.push(queue.Id);
+  const queueIds = [];
+  try {
+    const listQueuesCommand = new ListQueuesCommand({
+      InstanceId: process.env.InstanceId,
     });
+    const data = await client.send(listQueuesCommand);
+    console.log('Fetched Queues:', data.QueueSummaryList);  // Log queue details for debugging
+    if (data.QueueSummaryList && data.QueueSummaryList.length > 0) {
+      data.QueueSummaryList.forEach(queue => {
+        queueIds.push(queue.Id);
+      });
+    }
+  } catch (err) {
+    console.error('Error fetching queue IDs:', err);
   }
-} catch (err) {
-  console.error("Error fetching queue IDs:", err);
-}
-return queueIds;
+  return queueIds;
 };
 
 export const handler = async () => {
@@ -64,39 +65,50 @@ export const handler = async () => {
         .on('error', reject);
     });
 
+    console.log('Phone Numbers:', phoneNumbers);  // Log the parsed phone numbers for debugging
+
     if (phoneNumbers.length === 0) {
       throw new Error('No phone numbers found in the CSV file.');
     }
 
     // Fetch metrics from Amazon Connect
-    async function fetchmetrics(){
+    async function fetchMetrics() {
       const queueIds = await fetchAllQueueIds();
-      
-      if(queueIds.length === 0){
-        console.log("no queues found")
+      if (queueIds.length === 0) {
+        console.log('No queues found');
         return;
       }
-      
-    }
- 
-    const metricDataInput = {
-      ResourceArn: `arn:aws:connect:us-east-1:768637739934:instance/${instanceId}`,
-      StartTime: new Date(yesterdayStart),
-      EndTime: new Date(yesterdayEnd),
-      Interval: { IntervalPeriod: 'DAY' },
-      Filters: [{ FilterKey: "QUEUE", FilterValues: queueIds, },],
-      Groupings: ["QUEUE"],
-      Metrics: [{ Name: 'CONTACTS_HANDLED' }, { Name: 'CONTACTS_ABANDONED' }],
-    };
 
-    console.log('****MetricCommnad******',metricDataInput)
-    const metricCommand = new GetMetricDataV2Command(metricDataInput);
-    const metricResponse = await client.send(metricCommand);
+      const metricDataInput = {
+        ResourceArn: `arn:aws:connect:us-east-1:768637739934:instance/${instanceId}`,
+        StartTime: new Date(yesterdayStart),
+        EndTime: new Date(yesterdayEnd),
+        Interval: { IntervalPeriod: 'DAY' },
+        Filters: [{ FilterKey: 'QUEUE', FilterValues: queueIds }],
+        Groupings: ['QUEUE'],
+        Metrics: [
+          { Name: 'CONTACTS_HANDLED' },
+          { Name: 'CONTACTS_ABANDONED' },
+        ],
+      };
+
+      console.log('**** Metric Command ******', metricDataInput);
+      const metricCommand = new GetMetricDataV2Command(metricDataInput);
+      const metricResponse = await client.send(metricCommand);
+
+      return metricResponse.MetricResults;
+    }
+
+    const metricResults = await fetchMetrics();
+
+    if (!metricResults) {
+      throw new Error('No metric results found.');
+    }
 
     const contactDetails = [];
 
     // Extract and format contact details
-    for (const result of metricResponse.MetricResults) {
+    for (const result of metricResults) {
       const agentId = result.Dimensions?.AGENT || 'N/A';
       const phoneNumber = result.Dimensions?.PhoneNumber || 'N/A';
       const disposition = result.Dimensions?.Disposition || 'Unknown';
@@ -147,11 +159,3 @@ export const handler = async () => {
     };
   }
 };
-
-
-this is the error.
-
-
-
-
-
