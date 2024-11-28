@@ -8,21 +8,21 @@ const client = new ConnectClient({ region: 'us-east-1' });
 
 // Function to fetch all queue IDs
 const fetchAllQueueIds = async () => {
- const queueIds = [];
- try {
-   const listQueuesCommand = new ListQueuesCommand({
-     InstanceId: process.env.InstanceId,
-   });
-   const data = await client.send(listQueuesCommand);
-   if (data.QueueSummaryList && data.QueueSummaryList.length > 0) {
-     data.QueueSummaryList.forEach(queue => {
-       queueIds.push(queue.Id);
-     });
-   }
- } catch (err) {
-   console.error("Error fetching queue IDs:", err);
- }
- return queueIds;
+  const queueIds = [];
+  try {
+    const listQueuesCommand = new ListQueuesCommand({
+      InstanceId: process.env.InstanceId, // Ensure this environment variable is set
+    });
+    const data = await client.send(listQueuesCommand);
+    if (data.QueueSummaryList && data.QueueSummaryList.length > 0) {
+      data.QueueSummaryList.forEach(queue => {
+        queueIds.push(queue.Id);
+      });
+    }
+  } catch (err) {
+    console.error("Error fetching queue IDs:", err);
+  }
+  return queueIds;
 };
 
 export const handler = async () => {
@@ -69,50 +69,59 @@ export const handler = async () => {
     }
 
     // Fetch metrics from Amazon Connect
-    async function fetchmetrics(){
+    const fetchMetrics = async () => {
       const queueIds = await fetchAllQueueIds();
-      
-      if(queueIds.length === 0){
-        console.log("no queues found")
-        return;
+
+      if (queueIds.length === 0) {
+        console.log("No queues found");
+        return [];
       }
-      
-    }
- 
-    const metricDataInput = {
-      ResourceArn: `arn:aws:connect:us-east-1:768637739934:instance/${instanceId}`,
-      StartTime: new Date(yesterdayStart),
-      EndTime: new Date(yesterdayEnd),
-      Interval: { IntervalPeriod: 'DAY' },
-      Filters: [{ FilterKey: "QUEUE", FilterValues: queueIds, },],
-      Groupings: ["QUEUE"],
-      Metrics: [{ Name: 'CONTACTS_HANDLED' }, { Name: 'CONTACTS_ABANDONED' }],
+
+      const metricDataInput = {
+        ResourceArn: `arn:aws:connect:us-east-1:768637739934:instance/${instanceId}`,
+        StartTime: new Date(yesterdayStart),
+        EndTime: new Date(yesterdayEnd),
+        Interval: { IntervalPeriod: 'DAY' },
+        Filters: [{ FilterKey: "QUEUE", FilterValues: queueIds }],
+        Groupings: ["QUEUE"],
+        Metrics: [
+          { Name: 'CONTACTS_HANDLED' },
+          { Name: 'CONTACTS_ABANDONED' }
+        ]
+      };
+
+      const metricCommand = new GetMetricDataV2Command(metricDataInput);
+      try {
+        const metricResponse = await client.send(metricCommand);
+        return metricResponse.MetricResults || [];
+      } catch (error) {
+        console.error('Error fetching metric data:', error);
+        return [];
+      }
     };
 
-    console.log('****MetricCommnad******',metricDataInput)
-    const metricCommand = new GetMetricDataV2Command(metricDataInput);
-    const metricResponse = await client.send(metricCommand);
-
+    const metricResults = await fetchMetrics();
     const contactDetails = [];
 
-    // Extract and format contact details
-    for (const result of metricResponse.MetricResults) {
+    // Extract and format contact details from metric results
+    for (const result of metricResults) {
       const agentId = result.Dimensions?.AGENT || 'N/A';
       const phoneNumber = result.Dimensions?.PhoneNumber || 'N/A';
       const disposition = result.Dimensions?.Disposition || 'Unknown';
 
       for (const collection of result.Collections) {
+        const contactId = result.Dimensions?.ContactId || 'N/A';
         if (collection.Metric.Name === 'CONTACTS_HANDLED' && collection.Value > 0) {
-          // Fetch contact attributes from Amazon Connect
+          // Fetch contact attributes for handled contacts
           const attributesCommand = new GetContactAttributesCommand({
             InstanceId: instanceId,
-            InitialContactId: result.Dimensions?.ContactId || 'N/A',
+            InitialContactId: contactId,
           });
 
           const attributesResponse = await client.send(attributesCommand);
 
           contactDetails.push({
-            contactId: result.Dimensions?.ContactId || 'N/A',
+            contactId,
             agentId,
             timestamp: new Date().toISOString(),
             outboundPhoneNumber: phoneNumber,
@@ -121,7 +130,7 @@ export const handler = async () => {
           });
         } else if (collection.Metric.Name === 'CONTACTS_ABANDONED' && collection.Value > 0) {
           contactDetails.push({
-            contactId: result.Dimensions?.ContactId || 'N/A',
+            contactId,
             agentId,
             timestamp: new Date().toISOString(),
             outboundPhoneNumber: phoneNumber,
@@ -147,13 +156,3 @@ export const handler = async () => {
     };
   }
 };
-
-
-
-
-
-
-
-
-     
-     
