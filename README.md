@@ -1,19 +1,52 @@
 Hello,
 
 Warm Greetings from AWS Premium Support. 
-Thank you for your patience.
+Thank you for writing back to us.
 
-As discussed with our Amazon Connect team, it indeed seems to be an issue with the request body syntax.
+From the recent case notes, I see that you did make the changes in the syntax and set the FilterKey  to " "QUEUE" as well as Groupings to "QUEUE".
 
-The changes that are required in the syntax as per the documentation [1] are as follows:
+Using my internal tool, I can confirm on the same from the CloudTrail.
+However, I now see a syntax error in the "FilterValues" section.
 
-1. For the "FilterKey" parameter, it is case-sensitive and should be set to "QUEUE" (all in capital letters), while in your API call it is set to "Queue". Hence, please set it to "QUEUE".
+The "FilterValues" now is set to blank, compared to the numerous values present in the previous CloudTrail event I had shared with you. 
+Further, their is a syntax error here as you have added curly brackets "{}" for the "FilterValues" section instead of the square brackets "[]".
 
-2. For "Groupings" parameter, it is currently set to "QUEUES"in your API Call, but should be set to "QUEUE". Hence, please make the necessary change for this parameter as well.
+You can view the below CloudTrail logs to verify the same.
 
-Therefore, the correct syntax of the entire GetMetricsDataV2 API Call for you should look like below:
+https://us-east-1.console.aws.amazon.com/cloudtrail/home?region=us-east-1#/events?StartTime=2024-11-26T12:44:20.708Z&EndTime=2024-11-27T12:44:20.708Z&EventSource=connect.amazonaws.com 
 
-============
+I believe this would be the cause of the issue.
+However, I would re-confirm on the same from the Amazon Connect team.
+
+In the meantime, you can try making the below mentioned changes and test if this helps address our issue.
+
+As we can see, the syntax in the request parameter  "FilterValues" of the GetMetricDataV2 is currently set as below:
+
+   "Filters": [
+            {
+                "FilterKey": "QUEUE",
+                "FilterValues": {}
+            }
+        ]
+
+Notice the curly brackets above for "FilterValues".
+
+However the correct syntax involves square brackets and would be
+
+ "Filters": [
+            {
+                "FilterKey": "QUEUE",
+                "FilterValues": []
+            }
+        ]
+
+Hence, please make the necessary changes to the syntax of the request parameter and let us know if this resolves our issue.
+
+I had also shared how the correct syntax of the entire GetMetricsDataV2 API Call for you should look like, based on the CloudTrail logs I had shared in my previous email where I highlighted the correction in "FilterKey" and "Groupings" parameter.
+
+Reiterating the same here for reference.
+
+================
 
 "requestParameters": {
         "ResourceArn": "arn:aws:connect:us-east-1:768637739934:instance/bd16d991-11c8-4d1e-9900-edd5ed4a9b21",
@@ -130,18 +163,14 @@ Therefore, the correct syntax of the entire GetMetricsDataV2 API Call for you sh
         }
     }
 
-============
+================
 
-Please make the necessary changes as mentioned above and let us know if this resolves our issue.
+Please test the above request API call with the correct syntax and let us know if it resolves the issue.
+Meanwhile, as I will be discussing the above changes with our Amazon Connect team, I will put the case in "Pending Amazon Action" status and will share further updates upon confirmation.
 
-I trust you will find this information helpful. In case you need any further clarification or have more questions/concerns, please feel free to reply to this case and I'll be more than happy to assist you.
+Please feel free to reach out to us and let us know if the above resolves our issue or if you still face the issue after making the above recommended changes.
 
 Have a great day ahead!
-
-=======References=======
-
-[1]GetMetricDataV2
-https://docs.aws.amazon.com/connect/latest/APIReference/API_GetMetricDataV2.html#API_GetMetricDataV2_RequestBody 
 
 We value your feedback. Please share your experience by rating this and other correspondences in the AWS Support Center. You can rate a correspondence by selecting the stars in the top right corner of the correspondence.
 
@@ -149,137 +178,197 @@ Best regards,
 Rohit  D.
 Amazon Web Services
 
-this is the response from aws team.
 
-and this is my updated code as oer their advise
-import { S3Client, GetObjectCommand } from '@aws-sdk/client-s3';
-import csvParser from 'csv-parser';
-import { ConnectClient, GetMetricDataV2Command, GetContactAttributesCommand } from '@aws-sdk/client-connect';
-import { subDays, format } from 'date-fns';
+this is the response from aws team and this is my code below. please mae the necessary changes.
 
-const s3 = new S3Client();
-const connect = new ConnectClient();
-
-export const handler = async () => {
-  const bucketName = 'customeroutbound-data';
-  const fileName = 'CustomerOutboundNumber.csv';
-  const instanceId = 'bd16d991-11c8-4d1e-9900-edd5ed4a9b21';
-  const queueId = 'f8c742b9-b5ef-4948-8bbf-9a33c892023f';
-  const yesterdayStart = `${format(subDays(new Date(), 1), 'yyyy-MM-dd')}T00:00:00Z`;
-  const yesterdayEnd = `${format(subDays(new Date(), 1), 'yyyy-MM-dd')}T23:59:59Z`;
-
-  try {
-    // Fetch CSV from S3
-    const params = { Bucket: bucketName, Key: fileName };
-    const command = new GetObjectCommand(params);
-    const response = await s3.send(command);
-    const stream = response.Body;
-
-    if (!stream) {
-      throw new Error('No stream data found in the S3 object.');
-    }
-
-    const phoneNumbers = [];
-    await new Promise((resolve, reject) => {
-      stream
-        .pipe(csvParser({ separator: ';' }))
-        .on('data', (row) => {
-          const phoneNumber = row.PhoneNumber || row['Name;PhoneNumber']?.split(';')[1]?.trim();
-          if (phoneNumber) {
-            let formattedNumber = phoneNumber.replace(/\D/g, '');
-            if (formattedNumber.length === 10) {
-              formattedNumber = `+91${formattedNumber}`;
-            } else if (formattedNumber.length === 11) {
-              formattedNumber = `+1${formattedNumber}`;
-            }
-            phoneNumbers.push(formattedNumber);
-          }
-        })
-        .on('end', resolve)
-        .on('error', reject);
-    });
-
-    if (phoneNumbers.length === 0) {
-      throw new Error('No phone numbers found in the CSV file.');
-    }
-
-    // Fetch metrics from Amazon Connect
-    const metricDataInput = {
-      ResourceArn: `arn:aws:connect:us-east-1:768637739934:instance/${instanceId}`,
-      StartTime: new Date(yesterdayStart),
-      EndTime: new Date(yesterdayEnd),
-      Interval: { TimeZone: 'UTC', IntervalPeriod: 'DAY' },
-      Filters: [{ FilterKey: 'QUEUE', FilterValues: queueId }],
-      Groupings: ['QUEUE'],
-      Metrics: [{ Name: 'CONTACTS_HANDLED' }, { Name: 'CONTACTS_ABANDONED' }],
-    };
-
-    console.log('****MetricCommnad******',metricDataInput)
-    const metricCommand = new GetMetricDataV2Command(metricDataInput);
-    const metricResponse = await connect.send(metricCommand);
-
-    const contactDetails = [];
-
-    // Extract and format contact details
-    for (const result of metricResponse.MetricResults) {
-      const agentId = result.Dimensions?.AGENT || 'N/A';
-      const phoneNumber = result.Dimensions?.PhoneNumber || 'N/A';
-      const disposition = result.Dimensions?.Disposition || 'Unknown';
-
-      for (const collection of result.Collections) {
-        if (collection.Metric.Name === 'CONTACTS_HANDLED' && collection.Value > 0) {
-          // Fetch contact attributes from Amazon Connect
-          const attributesCommand = new GetContactAttributesCommand({
-            InstanceId: instanceId,
-            InitialContactId: result.Dimensions?.ContactId || 'N/A',
-          });
-
-          const attributesResponse = await connect.send(attributesCommand);
-
-          contactDetails.push({
-            contactId: result.Dimensions?.ContactId || 'N/A',
-            agentId,
-            timestamp: new Date().toISOString(),
-            outboundPhoneNumber: phoneNumber,
-            disposition: disposition || 'Completed',
-            attributes: attributesResponse.Attributes || {},
-          });
-        } else if (collection.Metric.Name === 'CONTACTS_ABANDONED' && collection.Value > 0) {
-          contactDetails.push({
-            contactId: result.Dimensions?.ContactId || 'N/A',
-            agentId,
-            timestamp: new Date().toISOString(),
-            outboundPhoneNumber: phoneNumber,
-            disposition: 'Abandoned',
-            attributes: {},
-          });
-        }
-      }
-    }
-
-    return {
-      statusCode: 200,
-      body: JSON.stringify({
-        message: 'Contact details fetched successfully.',
-        contactDetails,
-      }),
-    };
-  } catch (error) {
-    console.error('Error processing the Lambda function:', error);
-    return {
-      statusCode: 500,
-      body: JSON.stringify({ error: error.message, details: error.stack }),
-    };
-  }
+import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
+import { ConnectClient, GetMetricDataV2Command, ListQueuesCommand } from "@aws-sdk/client-connect";
+// Create an S3 client
+const s3Client = new S3Client({ region: 'us-east-1' });
+// The Connect client
+const client = new ConnectClient({ region: 'us-east-1' });
+// Function to convert daily data to CSV format with metric names as headers
+function convertDailyToCSV(data, metricNames) {
+ const header = ['Date', 'ResourceID', ...metricNames].join(',') + '\n';
+ const rows = data.map(day => {
+   return day.metrics.map(resource => {
+     const metricsRow = metricNames.map(name => {
+       const metric = resource.metrics.find(m => m.metricName === name);
+       return metric ? metric.metricValue : ''; // If metric not found, leave blank
+     }).join(',');
+     return `${day.date},${resource.resourceId},${metricsRow}`;
+   }).join('\n');
+ }).join('\n');
+ return header + rows;
+}
+// Function to convert cumulative data to CSV format
+function convertCumulativeToCSV(data, metricNames) {
+ const header = ['ResourceID', 'CumulativeMetric', ...metricNames].join(',') + '\n';
+ const rows = data.map(resource => {
+   const metricsRow = metricNames.map(name => {
+     const metric = resource.metrics.find(m => m.metricName === name);
+     return metric ? metric.metricValue : ''; // If metric not found, leave blank
+   }).join(',');
+   return `${resource.resourceId},${resource.cumulativeMetric},${metricsRow}`;
+ }).join('\n');
+ return header + rows;
+}
+// Function to convert data to JSON format
+function convertToJSON(data) {
+ return JSON.stringify(data, null, 2);
+}
+// Function to upload file to S3
+async function uploadToS3(fileContent, bucketName, fileName) {
+ const command = new PutObjectCommand({
+   Bucket: bucketName,
+   Key: fileName,
+   Body: fileContent,
+   ContentType: fileName.endsWith('.csv') ? 'text/csv' : 'application/json',
+ });
+ await s3Client.send(command);
+}
+// Function to get date range
+function getDateRange(startDate, endDate) {
+ const dates = [];
+ let currentDate = new Date(startDate);
+ while (currentDate <= new Date(endDate)) {
+   dates.push(new Date(currentDate).toISOString().split("T")[0]);
+   currentDate.setDate(currentDate.getDate() + 1);
+ }
+ return dates;
+}
+// Function to fetch all queue IDs
+const fetchAllQueueIds = async () => {
+ const queueIds = [];
+ try {
+   const listQueuesCommand = new ListQueuesCommand({
+     InstanceId: process.env.InstanceId,
+   });
+   const data = await client.send(listQueuesCommand);
+   if (data.QueueSummaryList && data.QueueSummaryList.length > 0) {
+     data.QueueSummaryList.forEach(queue => {
+       queueIds.push(queue.Id);
+     });
+   }
+ } catch (err) {
+   console.error("Error fetching queue IDs:", err);
+ }
+ return queueIds;
 };
+// Function to fetch metrics for all resources (agents or queues) and return them grouped by date
+const fetchMetrics = async (filters, groupings, metrics, dateRange) => {
+ const dailyMetrics = [];
+ for (const date of dateRange) {
+   const input = {
+     ResourceArn: process.env.InstanceArn,
+     StartTime: new Date(`${date}T00:00:00Z`),
+     EndTime: new Date(`${date}T23:59:59Z`),
+     Interval: { IntervalPeriod: "DAY" },
+     Filters: filters,
+     Groupings: groupings,
+     Metrics: metrics,
+   };
+   try {
+     const command = new GetMetricDataV2Command(input);
+     const data = await client.send(command);
+     const metricsForDate = {
+       date,
+       metrics: [],
+     };
+     if (data.MetricResults && data.MetricResults.length > 0) {
+       data.MetricResults.forEach(result => {
+         const resourceId = result.Dimensions ? Object.values(result.Dimensions)[0] : "Unknown";
+         const resultMetrics = result.Collections.map(collection => ({
+           metricName: collection.Metric.Name,
+           metricValue: collection.Value,
+         }));
+         metricsForDate.metrics.push({
+           resourceId,
+           metrics: resultMetrics,
+         });
+       });
+     }
+     dailyMetrics.push(metricsForDate);
+   } catch (err) {
+     console.error(`Error fetching metrics for date ${date}:`, err);
+     dailyMetrics.push({
+       date,
+       errorMessage: err.message,
+     });
+   }
+ }
+ return dailyMetrics;
+};
+// Function to aggregate daily metrics into cumulative metrics
+function aggregateMetrics(dailyMetrics) {
+ const cumulativeData = [];
+ dailyMetrics.forEach(day => {
+   day.metrics.forEach(resource => {
+     let resourceData = cumulativeData.find(item => item.resourceId === resource.resourceId);
+     if (!resourceData) {
+       resourceData = { resourceId: resource.resourceId, cumulativeMetric: 0, metrics: [] };
+       cumulativeData.push(resourceData);
+     }
+     resource.metrics.forEach(metric => {
+       resourceData.cumulativeMetric += metric.metricValue;
+       let existingMetric = resourceData.metrics.find(m => m.metricName === metric.metricName);
+       if (existingMetric) {
+         existingMetric.metricValue += metric.metricValue;
+       } else {
+         resourceData.metrics.push({ metricName: metric.metricName, metricValue: metric.metricValue });
+       }
+     });
+   });
+ });
+ return cumulativeData;
+}
+// Main handler function
 
-
-
-
-
-
-
-
-     
-     
-
+export const handler = async (event) => {
+ 
+ const { startDate, endDate, format, isCumulativeReport, resourceType } = event;
+ const instanceArn = process.env.InstanceArn;
+ const bucketName = process.env.S3_BUCKET_NAME;
+ if (!bucketName) {
+   return { statusCode: 500, body: JSON.stringify({ error: "S3 bucket name is not set in environment variables." }) };
+ }
+ if (!startDate || !endDate || !resourceType) {
+   return { statusCode: 400, body: JSON.stringify({ error: "Missing required parameters in the event." }) };
+ }
+ const validResourceTypes = ["queue", "agent"];
+ if (!validResourceTypes.includes(resourceType)) {
+   return { statusCode: 400, body: JSON.stringify({ error: `Invalid resource type: ${resourceType}. Must be one of: ${validResourceTypes.join(", ")}` }) };
+ }
+ const dateRange = getDateRange(startDate, endDate);
+ const filters = [{ FilterKey: "QUEUE", FilterValues: fetchAllQueueIds() }];
+ const groupings = [resourceType.toUpperCase()];
+ const metrics = [
+   { Name: "CONTACTS_HANDLED", Unit: "COUNT" },
+   { Name: "AVG_HANDLE_TIME", Unit: "SECONDS" },
+   { Name: "CONTACTS_ABANDONED", Unit: "COUNT" },
+ ];
+ try {
+   const dailyMetrics = await fetchMetrics(filters, groupings, metrics, dateRange);
+   const metricNames = metrics.map(m => m.Name);
+   let fileContent;
+   if (isCumulativeReport) {
+     const cumulativeData = aggregateMetrics(dailyMetrics);
+     fileContent = format === 'csv' ? convertCumulativeToCSV(cumulativeData, metricNames) : convertToJSON(cumulativeData);
+   } else {
+     fileContent = format === 'csv' ? convertDailyToCSV(dailyMetrics, metricNames) : convertToJSON(dailyMetrics);
+   }
+   const fileName = `${resourceType}-${isCumulativeReport ? 'cumulative' : 'daily'}-report-${Date.now()}.${format}`;
+   await uploadToS3(fileContent, bucketName, fileName);
+   const fileUrl = `https://s3.amazonaws.com/${bucketName}/${fileName}`;
+   return {
+     statusCode: 200,
+     body: JSON.stringify({
+       message: "File uploaded successfully.",
+       fileUrl: fileUrl,
+     }),
+   };
+ } catch (error) {
+   console.error("Error generating report:", error);
+   return { statusCode: 500, body: JSON.stringify({ error: error.message }) };
+ }
+};
