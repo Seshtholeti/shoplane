@@ -75,14 +75,24 @@ export const handler = async () => {
     if (queueIds.length === 0) {
       throw new Error('No queues found');
     }
+
+    // Log the queue IDs to confirm they are correct
     console.log('Queue IDs for Metric Command:', queueIds); // Log queue IDs before passing to the metric command
+
+    // Verify that queueIds is a valid array
+    if (!Array.isArray(queueIds) || queueIds.length === 0) {
+      throw new Error('Invalid or empty Queue IDs');
+    }
 
     const metricDataInput = {
       ResourceArn: `arn:aws:connect:us-east-1:768637739934:instance/${instanceId}`,
       StartTime: new Date(yesterdayStart),
       EndTime: new Date(yesterdayEnd),
       Interval: { IntervalPeriod: 'DAY' },
-      Filters: [{ FilterKey: 'QUEUE', FilterValues: queueIds }],
+      Filters: [{
+        FilterKey: 'QUEUE',
+        FilterValues: queueIds,  // Ensure this is a valid array
+      }],
       Groupings: ['QUEUE'],
       Metrics: [
         { Name: 'CONTACTS_HANDLED' },
@@ -90,7 +100,9 @@ export const handler = async () => {
       ],
     };
 
-    console.log('**** Metric Command ******', metricDataInput); // Log metric data input
+    // Log metric data input for debugging
+    console.log('**** Metric Command ******', metricDataInput);
+
     const metricCommand = new GetMetricDataV2Command(metricDataInput);
     const metricResponse = await client.send(metricCommand);
 
