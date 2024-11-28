@@ -1,10 +1,29 @@
 import { S3Client, GetObjectCommand } from '@aws-sdk/client-s3';
 import csvParser from 'csv-parser';
-import { ConnectClient, GetMetricDataV2Command, GetContactAttributesCommand } from '@aws-sdk/client-connect';
+import { ConnectClient, GetMetricDataV2Command, GetContactAttributesCommand, ListQueuesCommand } from '@aws-sdk/client-connect';
 import { subDays, format } from 'date-fns';
 
 const s3 = new S3Client();
-const connect = new ConnectClient();
+const client = new ConnectClient({ region: 'us-east-1' });
+
+// Function to fetch all queue IDs
+const fetchAllQueueIds = async () => {
+ const queueIds = [];
+ try {
+   const listQueuesCommand = new ListQueuesCommand({
+     InstanceId: process.env.InstanceId,
+   });
+   const data = await client.send(listQueuesCommand);
+   if (data.QueueSummaryList && data.QueueSummaryList.length > 0) {
+     data.QueueSummaryList.forEach(queue => {
+       queueIds.push(queue.Id);
+     });
+   }
+ } catch (err) {
+   console.error("Error fetching queue IDs:", err);
+ }
+ return queueIds;
+};
 
 export const handler = async () => {
   const bucketName = 'customeroutbound-data';
@@ -50,20 +69,29 @@ export const handler = async () => {
     }
 
     // Fetch metrics from Amazon Connect
-    const queueId = 'f8c742b9-b5ef-4948-8bbf-9a33c892023f';
+    async function fetchmetrics(){
+      const queueIds = await fetchAllQueueIds();
+      
+      if(queueIds.length === 0){
+        console.log("no queues found")
+        return;
+      }
+      
+    }
+ 
     const metricDataInput = {
       ResourceArn: `arn:aws:connect:us-east-1:768637739934:instance/${instanceId}`,
       StartTime: new Date(yesterdayStart),
       EndTime: new Date(yesterdayEnd),
       Interval: { IntervalPeriod: 'DAY' },
-      Filters: [{ FilterKey: 'QUEUE', FilterValues:[queueId] }],
-      Groupings: ['QUEUE'],
+      Filters: [{ FilterKey: "QUEUE", FilterValues: queueIds, },],
+      Groupings: ["QUEUE"],
       Metrics: [{ Name: 'CONTACTS_HANDLED' }, { Name: 'CONTACTS_ABANDONED' }],
     };
 
     console.log('****MetricCommnad******',metricDataInput)
     const metricCommand = new GetMetricDataV2Command(metricDataInput);
-    const metricResponse = await connect.send(metricCommand);
+    const metricResponse = await client.send(metricCommand);
 
     const contactDetails = [];
 
@@ -81,7 +109,7 @@ export const handler = async () => {
             InitialContactId: result.Dimensions?.ContactId || 'N/A',
           });
 
-          const attributesResponse = await connect.send(attributesCommand);
+          const attributesResponse = await client.send(attributesCommand);
 
           contactDetails.push({
             contactId: result.Dimensions?.ContactId || 'N/A',
