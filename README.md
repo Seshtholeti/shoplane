@@ -57,10 +57,10 @@ async function fetchContactDetails(phoneNumber) {
       const answered = contactAttributes?.answered === 'true' ? 'Answered' : 'Not Answered';
       const agentId = contact.Agent ? contact.Agent.Id : 'N/A';
 
-      // Print the contact details and attributes
-      console.log(`Phone Number: ${phoneNumber}`);
+      // Print the contact details and attributes directly to the console
+      console.log(`Processing record for Phone Number: ${phoneNumber}`);
       console.log(`Status: ${answered}`);
-      console.log('Contact Attributes:', contactAttributes);
+      console.log('Contact Attributes:', JSON.stringify(contactAttributes, null, 2)); // Pretty-print attributes
       console.log('Agent ID:', agentId);
     } else {
       console.log(`No record found for phone number: ${phoneNumber}`);
@@ -83,7 +83,9 @@ export const handler = async (event) => {
     await fetchContactDetails(contact.phoneNumber);
   }
 
-  // Instead of just returning a generic message, you now explicitly log the contact details.
+  // Instead of just returning a generic message, we log detailed information to the console
+  console.log('CSV processing completed. Check the console output for contact attributes.');
+  
   return {
     statusCode: 200,
     body: 'Processed contact details. Check the CloudWatch logs for the attributes.',
