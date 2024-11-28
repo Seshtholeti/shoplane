@@ -1,6 +1,3 @@
-const contactFlowId = '09f2c3c7-c424-4ad2-be1f-246be15b51a4';
-
-code :
 import { S3Client, GetObjectCommand } from '@aws-sdk/client-s3';
 import csvParser from 'csv-parser';
 import { ConnectClient, GetMetricDataV2Command, GetContactAttributesCommand, ListQueuesCommand } from '@aws-sdk/client-connect';
@@ -117,27 +114,33 @@ export const handler = async () => {
 
     // Extract and format contact details
     for (const result of metricResponse.MetricResults) {
+      console.log("res",metricResponse.MetricResults )
       const agentId = result.Dimensions?.AGENT || 'N/A';
       const phoneNumber = result.Dimensions?.PhoneNumber || 'N/A';
       const disposition = result.Dimensions?.Disposition || 'Unknown';
+      const contactId = "09f2c3c7-c424-4ad2-be1f-246be15b51a4";
+      
+      console.log('**cID:', contactId)
 
       for (const collection of result.Collections) {
         if (collection.Metric.Name === 'CONTACTS_HANDLED' && collection.Value > 0) {
           // Fetch contact attributes from Amazon Connect
           const attributesCommand = new GetContactAttributesCommand({
             InstanceId: instanceId,
-            InitialContactId: result.Dimensions?.ContactId || 'N/A',
+            InitialContactId: contactId,
             
             
             
           });
+          
+          console.log('sending GetContactAttributesCommand with contact id', contactId)
           
           
 
           const attributesResponse = await client.send(attributesCommand);
 
           contactDetails.push({
-            contactId: result.Dimensions?.ContactId || 'N/A',
+            contactId,
             agentId,
             timestamp: new Date().toISOString(),
             outboundPhoneNumber: phoneNumber,
@@ -146,7 +149,7 @@ export const handler = async () => {
           });
         } else if (collection.Metric.Name === 'CONTACTS_ABANDONED' && collection.Value > 0) {
           contactDetails.push({
-            contactId: result.Dimensions?.ContactId || 'N/A',
+            contactId,
             agentId,
             timestamp: new Date().toISOString(),
             outboundPhoneNumber: phoneNumber,
@@ -173,19 +176,51 @@ export const handler = async () => {
   }
 };
 
-this is the syntax for the getcontactattributes
-import { ConnectClient, GetContactAttributesCommand } from "@aws-sdk/client-connect"; // ES Modules import
-// const { ConnectClient, GetContactAttributesCommand } = require("@aws-sdk/client-connect"); // CommonJS import
-const client = new ConnectClient(config);
-const input = { // GetContactAttributesRequest
-  InstanceId: "STRING_VALUE", // required
-  InitialContactId: "STRING_VALUE", // required
-};
-const command = new GetContactAttributesCommand(input);
-const response = await client.send(command);
-// { // GetContactAttributesResponse
-//   Attributes: { // Attributes
-//     "<keys>": "STRING_VALUE",
-//   },
-// };
+below is the error
 
+Response
+{
+  "statusCode": 500,
+  "body": "{\"error\":\"Resource not found\",\"details\":\"ResourceNotFoundException: Resource not found\\n    at de_ResourceNotFoundExceptionRes (/var/runtime/node_modules/@aws-sdk/client-connect/dist-cjs/index.js:10072:21)\\n    at de_CommandError (/var/runtime/node_modules/@aws-sdk/client-connect/dist-cjs/index.js:9740:19)\\n    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)\\n    at async /var/runtime/node_modules/@aws-sdk/node_modules/@smithy/middleware-serde/dist-cjs/index.js:35:20\\n    at async /var/runtime/node_modules/@aws-sdk/node_modules/@smithy/core/dist-cjs/index.js:165:18\\n    at async /var/runtime/node_modules/@aws-sdk/node_modules/@smithy/middleware-retry/dist-cjs/index.js:320:38\\n    at async /var/runtime/node_modules/@aws-sdk/middleware-logger/dist-cjs/index.js:34:22\\n    at async Runtime.handler (file:///var/task/index.mjs:290:38)\"}"
+}
+
+Function Logs
+START RequestId: 64bdfa63-c90f-475d-82ac-ecd13763d60c Version: $LATEST
+2024-11-28T10:08:02.648Z	64bdfa63-c90f-475d-82ac-ecd13763d60c	INFO	**** Metric Command ****** {"ResourceArn":"arn:aws:connect:us-east-1:768637739934:instance/bd16d991-11c8-4d1e-9900-edd5ed4a9b21","StartTime":"2024-11-27T00:00:00.000Z","EndTime":"2024-11-27T23:59:59.000Z","Interval":{"IntervalPeriod":"DAY"},"Filters":[{"FilterKey":"QUEUE","FilterValues":["f8c742b9-b5ef-4948-8bbf-9a33c892023f"]}],"Groupings":["QUEUE"],"Metrics":[{"Name":"CONTACTS_HANDLED","Unit":"COUNT"},{"Name":"CONTACTS_ABANDONED","Unit":"COUNT"}]}
+2024-11-28T10:08:02.986Z	64bdfa63-c90f-475d-82ac-ecd13763d60c	INFO	res [
+  {
+    Collections: [ [Object], [Object] ],
+    Dimensions: {
+      QUEUE: 'f8c742b9-b5ef-4948-8bbf-9a33c892023f',
+      QUEUE_ARN: 'arn:aws:connect:us-east-1:768637739934:instance/bd16d991-11c8-4d1e-9900-edd5ed4a9b21/queue/f8c742b9-b5ef-4948-8bbf-9a33c892023f'
+    },
+    MetricInterval: {
+      EndTime: 2024-11-27T23:59:59.000Z,
+      Interval: 'DAY',
+      StartTime: 2024-11-27T00:00:00.000Z
+    }
+  }
+]
+2024-11-28T10:08:02.989Z	64bdfa63-c90f-475d-82ac-ecd13763d60c	INFO	**cID: 09f2c3c7-c424-4ad2-be1f-246be15b51a4
+2024-11-28T10:08:03.026Z	64bdfa63-c90f-475d-82ac-ecd13763d60c	INFO	sending GetContactAttributesCommand with contact id 09f2c3c7-c424-4ad2-be1f-246be15b51a4
+2024-11-28T10:08:03.127Z	64bdfa63-c90f-475d-82ac-ecd13763d60c	ERROR	Error processing the Lambda function: ResourceNotFoundException: Resource not found
+    at de_ResourceNotFoundExceptionRes (/var/runtime/node_modules/@aws-sdk/client-connect/dist-cjs/index.js:10072:21)
+    at de_CommandError (/var/runtime/node_modules/@aws-sdk/client-connect/dist-cjs/index.js:9740:19)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async /var/runtime/node_modules/@aws-sdk/node_modules/@smithy/middleware-serde/dist-cjs/index.js:35:20
+    at async /var/runtime/node_modules/@aws-sdk/node_modules/@smithy/core/dist-cjs/index.js:165:18
+    at async /var/runtime/node_modules/@aws-sdk/node_modules/@smithy/middleware-retry/dist-cjs/index.js:320:38
+    at async /var/runtime/node_modules/@aws-sdk/middleware-logger/dist-cjs/index.js:34:22
+    at async Runtime.handler (file:///var/task/index.mjs:290:38) {
+  '$fault': 'client',
+  '$metadata': {
+    httpStatusCode: 404,
+    requestId: '812bac60-3ede-48cf-996c-c24381e570c6',
+    extendedRequestId: undefined,
+    cfId: undefined,
+    attempts: 1,
+    totalRetryDelay: 0
+  }
+}
+END RequestId: 64bdfa63-c90f-475d-82ac-ecd13763d60c
+REPORT RequestId: 64bdfa63-c90f-475d-82ac-ecd13763d60c	Duration: 1719.25 ms	Billed Duration: 1720 ms	Memory Size: 128 MB	Max Memory Used: 105 MB	Init Duration: 752.67 ms
