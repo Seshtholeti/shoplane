@@ -1,226 +1,88 @@
-import { S3Client, GetObjectCommand } from '@aws-sdk/client-s3';
-import csvParser from 'csv-parser';
-import { ConnectClient, GetMetricDataV2Command, GetContactAttributesCommand, ListQueuesCommand } from '@aws-sdk/client-connect';
-import { subDays, format } from 'date-fns';
+import AWS from 'aws-sdk';
+import readline from 'readline';
+import { Readable } from 'stream';
 
-const s3 = new S3Client();
-const client = new ConnectClient({ region: 'us-east-1' });
+const s3 = new AWS.S3();
+const connect = new AWS.Connect();
 
-// // Function to fetch all queue IDs
-// const fetchAllQueueIds = async () => {
-//   const queueIds = [];
-//   try {
-//     const listQueuesCommand = new ListQueuesCommand({
-//       InstanceId: process.env.InstanceId,
-//     });
-//     const data = await client.send(listQueuesCommand);
-//     console.log('Fetched Queues:', data.QueueSummaryList);  // Log queue details for debugging
-//     if (data.QueueSummaryList && data.QueueSummaryList.length > 0) {
-//       data.QueueSummaryList.forEach(queue => {
-//         queueIds.push(queue.Id);
-//       });
-//     }
-//   } catch (err) {
-//     console.error('Error fetching queue IDs:', err);
-//   }
-//   console.log('Queue IDs:', queueIds);  // Log the final array of queue IDs
-//   return queueIds;
-// };
-
-export const handler = async () => {
-  const bucketName = 'customeroutbound-data';
-  const fileName = 'CustomerOutboundNumber.csv';
-  const instanceId = 'bd16d991-11c8-4d1e-9900-edd5ed4a9b21';
-  
-  const yesterdayStart = `${format(subDays(new Date(), 1), 'yyyy-MM-dd')}T00:00:00Z`;
-  const yesterdayEnd = `${format(subDays(new Date(), 1), 'yyyy-MM-dd')}T23:59:59Z`;
-
+// Helper function to read the CSV file from S3 and extract phone numbers
+async function readCsvFileFromS3(bucketName, fileName) {
   try {
-    // Fetch CSV from S3
-    const params = { Bucket: bucketName, Key: fileName };
-    const command = new GetObjectCommand(params);
-    const response = await s3.send(command);
-    const stream = response.Body;
+    const params = {
+      Bucket: bucketName,
+      Key: fileName,
+    };
 
-    if (!stream) {
-      throw new Error('No stream data found in the S3 object.');
-    }
-
-    const phoneNumbers = [];
-    await new Promise((resolve, reject) => {
-      stream
-        .pipe(csvParser({ separator: ';' }))
-        .on('data', (row) => {
-          const phoneNumber = row.PhoneNumber || row['Name;PhoneNumber']?.split(';')[1]?.trim();
-          if (phoneNumber) {
-            let formattedNumber = phoneNumber.replace(/\D/g, '');
-            if (formattedNumber.length === 10) {
-              formattedNumber = `+91${formattedNumber}`;
-            } else if (formattedNumber.length === 11) {
-              formattedNumber = `+1${formattedNumber}`;
-            }
-            phoneNumbers.push(formattedNumber);
-          }
-        })
-        .on('end', resolve)
-        .on('error', reject);
+    const data = await s3.getObject(params).promise();
+    const fileContent = data.Body.toString('utf-8');
+    
+    const rl = readline.createInterface({
+      input: Readable.from(fileContent),
+      crlfDelay: Infinity,  // Handles both LF and CRLF line breaks
     });
 
-    if (phoneNumbers.length === 0) {
-      throw new Error('No phone numbers found in the CSV file.');
-    }
-
-    // // Fetch metrics from Amazon Connect
-    // const queueIds = await fetchAllQueueIds();
-    // if (queueIds.length === 0) {
-    //   throw new Error('No queues found');
-    // }
-
-    
-    // // console.log('Queue IDs for Metric Command:',JSON.stringify(queueIds));
-
-    // // Verify that queueIds is a valid array
-    // if (!Array.isArray(queueIds) || queueIds.length === 0) {
-    //   throw new Error('Invalid or empty Queue IDs');
-    // }
-    
-    const queueId = "f8c742b9-b5ef-4948-8bbf-9a33c892023f";
-    
-    const RArn = "arn:aws:connect:us-east-1:768637739934:instance/bd16d991-11c8-4d1e-9900-edd5ed4a9b21"
-
-    const metricDataInput = {
-      ResourceArn: RArn,
-      StartTime: new Date(yesterdayStart),
-      EndTime: new Date(yesterdayEnd),
-      Interval: { IntervalPeriod: 'DAY' },
-      Filters: [{
-        FilterKey: "QUEUE",
-        FilterValues: [queueId]
-      }],
-      Groupings: ['QUEUE'],
-      Metrics: [
-        { Name: "CONTACTS_HANDLED", Unit: "COUNT" },
-        { Name: "CONTACTS_ABANDONED", Unit: "COUNT" },
-      ],
-    };
-
-    // Log metric data input for debugging
-    console.log('**** Metric Command ******', JSON.stringify(metricDataInput,null,));
-
-    const metricCommand = new GetMetricDataV2Command(metricDataInput);
-    const metricResponse = await client.send(metricCommand);
-
-    const contactDetails = [];
-
-    // Extract and format contact details
-    for (const result of metricResponse.MetricResults) {
-      console.log("res",metricResponse.MetricResults )
-      const agentId = result.Dimensions?.AGENT || 'N/A';
-      const phoneNumber = result.Dimensions?.PhoneNumber || 'N/A';
-      const disposition = result.Dimensions?.Disposition || 'Unknown';
-      const contactId = "09f2c3c7-c424-4ad2-be1f-246be15b51a4";
-      
-      console.log('**cID:', contactId)
-
-      for (const collection of result.Collections) {
-        if (collection.Metric.Name === 'CONTACTS_HANDLED' && collection.Value > 0) {
-          // Fetch contact attributes from Amazon Connect
-          const attributesCommand = new GetContactAttributesCommand({
-            InstanceId: instanceId,
-            InitialContactId: contactId,
-            
-            
-            
-          });
-          
-          console.log('sending GetContactAttributesCommand with contact id', contactId)
-          
-          
-
-          const attributesResponse = await client.send(attributesCommand);
-
-          contactDetails.push({
-            contactId,
-            agentId,
-            timestamp: new Date().toISOString(),
-            outboundPhoneNumber: phoneNumber,
-            disposition: disposition || 'Completed',
-            attributes: attributesResponse.Attributes || {},
-          });
-        } else if (collection.Metric.Name === 'CONTACTS_ABANDONED' && collection.Value > 0) {
-          contactDetails.push({
-            contactId,
-            agentId,
-            timestamp: new Date().toISOString(),
-            outboundPhoneNumber: phoneNumber,
-            disposition: 'Abandoned',
-            attributes: {},
-          });
-        }
+    const contacts = [];
+    for await (const line of rl) {
+      const columns = line.split(','); // Split by comma for CSV columns
+      if (columns.length >= 2) {
+        const contact = {
+          name: columns[0].trim(),
+          phoneNumber: columns[1].trim(),
+        };
+        contacts.push(contact);
       }
     }
-
-    return {
-      statusCode: 200,
-      body: JSON.stringify({
-        message: 'Contact details fetched successfully.',
-        contactDetails,
-      }),
-    };
+    return contacts;
   } catch (error) {
-    console.error('Error processing the Lambda function:', error);
-    return {
-      statusCode: 500,
-      body: JSON.stringify({ error: error.message, details: error.stack }),
-    };
+    console.error(`Error reading CSV file from S3: ${error}`);
+    throw error;
   }
-};
-
-below is the error
-
-Response
-{
-  "statusCode": 500,
-  "body": "{\"error\":\"Resource not found\",\"details\":\"ResourceNotFoundException: Resource not found\\n    at de_ResourceNotFoundExceptionRes (/var/runtime/node_modules/@aws-sdk/client-connect/dist-cjs/index.js:10072:21)\\n    at de_CommandError (/var/runtime/node_modules/@aws-sdk/client-connect/dist-cjs/index.js:9740:19)\\n    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)\\n    at async /var/runtime/node_modules/@aws-sdk/node_modules/@smithy/middleware-serde/dist-cjs/index.js:35:20\\n    at async /var/runtime/node_modules/@aws-sdk/node_modules/@smithy/core/dist-cjs/index.js:165:18\\n    at async /var/runtime/node_modules/@aws-sdk/node_modules/@smithy/middleware-retry/dist-cjs/index.js:320:38\\n    at async /var/runtime/node_modules/@aws-sdk/middleware-logger/dist-cjs/index.js:34:22\\n    at async Runtime.handler (file:///var/task/index.mjs:290:38)\"}"
 }
 
-Function Logs
-START RequestId: 64bdfa63-c90f-475d-82ac-ecd13763d60c Version: $LATEST
-2024-11-28T10:08:02.648Z	64bdfa63-c90f-475d-82ac-ecd13763d60c	INFO	**** Metric Command ****** {"ResourceArn":"arn:aws:connect:us-east-1:768637739934:instance/bd16d991-11c8-4d1e-9900-edd5ed4a9b21","StartTime":"2024-11-27T00:00:00.000Z","EndTime":"2024-11-27T23:59:59.000Z","Interval":{"IntervalPeriod":"DAY"},"Filters":[{"FilterKey":"QUEUE","FilterValues":["f8c742b9-b5ef-4948-8bbf-9a33c892023f"]}],"Groupings":["QUEUE"],"Metrics":[{"Name":"CONTACTS_HANDLED","Unit":"COUNT"},{"Name":"CONTACTS_ABANDONED","Unit":"COUNT"}]}
-2024-11-28T10:08:02.986Z	64bdfa63-c90f-475d-82ac-ecd13763d60c	INFO	res [
-  {
-    Collections: [ [Object], [Object] ],
-    Dimensions: {
-      QUEUE: 'f8c742b9-b5ef-4948-8bbf-9a33c892023f',
-      QUEUE_ARN: 'arn:aws:connect:us-east-1:768637739934:instance/bd16d991-11c8-4d1e-9900-edd5ed4a9b21/queue/f8c742b9-b5ef-4948-8bbf-9a33c892023f'
+// Helper function to fetch Amazon Connect contact details based on phone number
+async function fetchContactDetails(phoneNumber) {
+  const params = {
+    InstanceId: 'your-instance-id', // Replace with your Amazon Connect InstanceId
+    ContactFilter: {
+      Channels: ['VOICE'],
+      ContactState: ['COMPLETED'],
     },
-    MetricInterval: {
-      EndTime: 2024-11-27T23:59:59.000Z,
-      Interval: 'DAY',
-      StartTime: 2024-11-27T00:00:00.000Z
+  };
+
+  try {
+    const data = await connect.listContacts(params).promise();
+    const contact = data.Contacts.find(contact => contact.CustomerEndpoint.Address === phoneNumber);
+
+    if (contact) {
+      // Fetch the contact attributes and check if the call was answered
+      const contactAttributes = contact.Attributes;
+      const answered = contactAttributes?.answered === 'true' ? 'Answered' : 'Not Answered';
+      const agentId = contact.Agent ? contact.Agent.Id : 'N/A'; // Get the agent ID if available
+
+      console.log(`Phone Number: ${phoneNumber}, Status: ${answered}`);
+      console.log('Contact Attributes:', contactAttributes);
+      console.log('Agent ID:', agentId);
+    } else {
+      console.log(`No record found for phone number: ${phoneNumber}`);
     }
-  }
-]
-2024-11-28T10:08:02.989Z	64bdfa63-c90f-475d-82ac-ecd13763d60c	INFO	**cID: 09f2c3c7-c424-4ad2-be1f-246be15b51a4
-2024-11-28T10:08:03.026Z	64bdfa63-c90f-475d-82ac-ecd13763d60c	INFO	sending GetContactAttributesCommand with contact id 09f2c3c7-c424-4ad2-be1f-246be15b51a4
-2024-11-28T10:08:03.127Z	64bdfa63-c90f-475d-82ac-ecd13763d60c	ERROR	Error processing the Lambda function: ResourceNotFoundException: Resource not found
-    at de_ResourceNotFoundExceptionRes (/var/runtime/node_modules/@aws-sdk/client-connect/dist-cjs/index.js:10072:21)
-    at de_CommandError (/var/runtime/node_modules/@aws-sdk/client-connect/dist-cjs/index.js:9740:19)
-    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
-    at async /var/runtime/node_modules/@aws-sdk/node_modules/@smithy/middleware-serde/dist-cjs/index.js:35:20
-    at async /var/runtime/node_modules/@aws-sdk/node_modules/@smithy/core/dist-cjs/index.js:165:18
-    at async /var/runtime/node_modules/@aws-sdk/node_modules/@smithy/middleware-retry/dist-cjs/index.js:320:38
-    at async /var/runtime/node_modules/@aws-sdk/middleware-logger/dist-cjs/index.js:34:22
-    at async Runtime.handler (file:///var/task/index.mjs:290:38) {
-  '$fault': 'client',
-  '$metadata': {
-    httpStatusCode: 404,
-    requestId: '812bac60-3ede-48cf-996c-c24381e570c6',
-    extendedRequestId: undefined,
-    cfId: undefined,
-    attempts: 1,
-    totalRetryDelay: 0
+  } catch (error) {
+    console.error(`Error fetching contact details for ${phoneNumber}:`, error);
   }
 }
-END RequestId: 64bdfa63-c90f-475d-82ac-ecd13763d60c
-REPORT RequestId: 64bdfa63-c90f-475d-82ac-ecd13763d60c	Duration: 1719.25 ms	Billed Duration: 1720 ms	Memory Size: 128 MB	Max Memory Used: 105 MB	Init Duration: 752.67 ms
+
+// Lambda function handler
+export const handler = async (event) => {
+  const bucketName = 'customeroutbound-data';
+  const fileName = 'CustomerOutboundNumber.csv';
+
+  // Read contacts from the CSV file stored in S3
+  const contacts = await readCsvFileFromS3(bucketName, fileName);
+
+  // Fetch and process the call records for each phone number
+  for (const contact of contacts) {
+    console.log(`Processing record for: ${contact.name} - ${contact.phoneNumber}`);
+    await fetchContactDetails(contact.phoneNumber);
+  }
+
+  return { statusCode: 200, body: 'CSV processing completed.' };
+};
