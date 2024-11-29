@@ -1,6 +1,6 @@
 import { S3Client, GetObjectCommand } from "@aws-sdk/client-s3";
 import { ConnectClient, SearchContactsCommand } from "@aws-sdk/client-connect";
-import * as csv from "csv-parser"; // Import csv-parser for parsing the CSV file
+import csvParser from "csv-parser"; // Correctly import csv-parser
 import { Readable } from "stream"; // Import Readable from stream module to work with S3 objects
 
 const connect = new ConnectClient({
@@ -22,20 +22,22 @@ async function getPhoneNumbersFromCSV(bucketName, csvFileName) {
   const stream = data.Body;
 
   return new Promise((resolve, reject) => {
+    // Ensure the stream is readable
     const readableStream = stream instanceof Readable ? stream : Readable.from(stream);
+    const results = [];
+
     readableStream
-      .pipe(csv())
+      .pipe(csvParser()) // Correctly use the csv-parser stream
       .on("data", (row) => {
-        // Assuming CSV has 'PhoneNumber' field
         if (row.PhoneNumber) {
-          phoneNumbers.push(row.PhoneNumber.trim()); // Ensure no extra spaces
+          results.push(row.PhoneNumber.trim()); // Ensure no extra spaces
         }
       })
       .on("end", () => {
-        resolve(phoneNumbers);
+        resolve(results); // Return the parsed phone numbers
       })
       .on("error", (error) => {
-        reject(error);
+        reject(error); // Handle error
       });
   });
 }
