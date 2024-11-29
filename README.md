@@ -1,8 +1,6 @@
-
 import { S3Client, GetObjectCommand } from "@aws-sdk/client-s3";
 import { ConnectClient, SearchContactRecordsCommand } from "@aws-sdk/client-connect";
 import csv from "csv-parser";
-import moment from "moment";
 
 const s3 = new S3Client({ region: "us-east-1" });
 const connect = new ConnectClient({ region: "us-east-1" });
@@ -13,12 +11,11 @@ export const handler = async (event) => {
     const fileName = "CustomerOutboundNumber.csv";
     const instanceId = "bd16d991-11c8-4d1e-9900-edd5ed4a9b21";
 
+    // Calculate yesterday's start and end times
+    const { startDate, endDate } = getYesterdayTimestamps();
+
     // Fetch phone numbers from the S3 file
     const phoneNumbers = await getPhoneNumbersFromCsv(bucketName, fileName);
-
-    // Get yesterday's date in ISO format
-    const startDate = moment().subtract(1, "days").startOf("day").toISOString();
-    const endDate = moment().subtract(1, "days").endOf("day").toISOString();
 
     // Fetch outbound contact records
     const contactRecords = await fetchOutboundContactRecords(instanceId, startDate, endDate, phoneNumbers);
@@ -41,6 +38,18 @@ export const handler = async (event) => {
     };
   }
 };
+
+// Function to calculate yesterday's start and end timestamps
+function getYesterdayTimestamps() {
+  const now = new Date();
+  const yesterday = new Date(now);
+  yesterday.setDate(now.getDate() - 1);
+
+  const startOfDay = new Date(yesterday.setHours(0, 0, 0, 0)).toISOString();
+  const endOfDay = new Date(yesterday.setHours(23, 59, 59, 999)).toISOString();
+
+  return { startDate: startOfDay, endDate: endOfDay };
+}
 
 // Function to fetch phone numbers from a CSV file in S3
 async function getPhoneNumbersFromCsv(bucketName, fileName) {
