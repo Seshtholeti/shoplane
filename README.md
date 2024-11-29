@@ -1,129 +1,178 @@
-import { S3Client, GetObjectCommand } from "@aws-sdk/client-s3";
-import { ConnectClient, SearchContactsCommand } from "@aws-sdk/client-connect";
-import csvParser from "csv-parser"; // Correctly import csv-parser
-import { Readable } from "stream"; // Import Readable from stream module to work with S3 objects
+// import { S3Client, GetObjectCommand } from '@aws-sdk/client-s3';
+// import csvParser from 'csv-parser';
+// import { ConnectClient, GetMetricDataV2Command, GetContactAttributesCommand, ListQueuesCommand } from '@aws-sdk/client-connect';
+// import { subDays, format } from 'date-fns';
 
-const connect = new ConnectClient({
-  region: "us-east-1", // Replace with your region
-});
+// const s3 = new S3Client();
+// const client = new ConnectClient({ region: 'us-east-1' });
 
-const s3 = new S3Client({
-  region: "us-east-1", // Replace with your region
-});
+// // // Function to fetch all queue IDs
+// // const fetchAllQueueIds = async () => {
+// //   const queueIds = [];
+// //   try {
+// //     const listQueuesCommand = new ListQueuesCommand({
+// //       InstanceId: process.env.InstanceId,
+// //     });
+// //     const data = await client.send(listQueuesCommand);
+// //     console.log('Fetched Queues:', data.QueueSummaryList);  // Log queue details for debugging
+// //     if (data.QueueSummaryList && data.QueueSummaryList.length > 0) {
+// //       data.QueueSummaryList.forEach(queue => {
+// //         queueIds.push(queue.Id);
+// //       });
+// //     }
+// //   } catch (err) {
+// //     console.error('Error fetching queue IDs:', err);
+// //   }
+// //   console.log('Queue IDs:', queueIds);  // Log the final array of queue IDs
+// //   return queueIds;
+// // };
 
-async function getPhoneNumbersFromCSV(bucketName, csvFileName) {
-  const phoneNumbers = [];
-  const command = new GetObjectCommand({
-    Bucket: bucketName,
-    Key: csvFileName,
-  });
+// export const handler = async () => {
+//   const bucketName = 'customeroutbound-data';
+//   const fileName = 'CustomerOutboundNumber.csv';
+//   const instanceId = 'bd16d991-11c8-4d1e-9900-edd5ed4a9b21';
+  
+//   const yesterdayStart = `${format(subDays(new Date(), 1), 'yyyy-MM-dd')}T00:00:00Z`;
+//   const yesterdayEnd = `${format(subDays(new Date(), 1), 'yyyy-MM-dd')}T23:59:59Z`;
 
-  const data = await s3.send(command);
-  const stream = data.Body;
+//   try {
+//     // Fetch CSV from S3
+//     const params = { Bucket: bucketName, Key: fileName };
+//     const command = new GetObjectCommand(params);
+//     const response = await s3.send(command);
+//     const stream = response.Body;
 
-  return new Promise((resolve, reject) => {
-    // Ensure the stream is readable
-    const readableStream = stream instanceof Readable ? stream : Readable.from(stream);
-    const results = [];
+//     if (!stream) {
+//       throw new Error('No stream data found in the S3 object.');
+//     }
 
-    readableStream
-      .pipe(csvParser()) // Correctly use the csv-parser stream
-      .on("data", (row) => {
-        if (row.PhoneNumber) {
-          results.push(row.PhoneNumber.trim()); // Ensure no extra spaces
-        }
-      })
-      .on("end", () => {
-        resolve(results); // Return the parsed phone numbers
-      })
-      .on("error", (error) => {
-        reject(error); // Handle error
-      });
-  });
-}
+//     const phoneNumbers = [];
+//     await new Promise((resolve, reject) => {
+//       stream
+//         .pipe(csvParser({ separator: ';' }))
+//         .on('data', (row) => {
+//           const phoneNumber = row.PhoneNumber || row['Name;PhoneNumber']?.split(';')[1]?.trim();
+//           if (phoneNumber) {
+//             let formattedNumber = phoneNumber.replace(/\D/g, '');
+//             if (formattedNumber.length === 10) {
+//               formattedNumber = `+91${formattedNumber}`;
+//             } else if (formattedNumber.length === 11) {
+//               formattedNumber = `+1${formattedNumber}`;
+//             }
+//             phoneNumbers.push(formattedNumber);
+//           }
+//         })
+//         .on('end', resolve)
+//         .on('error', reject);
+//     });
 
-async function fetchOutboundContactRecords(instanceId, startDate, endDate, phoneNumbers) {
-  const params = {
-    InstanceId: instanceId,
-    TimeRange: {
-      Type: "INITIATION_TIMESTAMP", // Filtering by initiation timestamp
-      StartTime: new Date(startDate),
-      EndTime: new Date(endDate),
-    },
-    SearchCriteria: {
-      InitiationMethods: ["OUTBOUND"], // Only fetch outbound calls
-    },
-    MaxResults: 100, // Adjust the number of results as needed
-    Sort: {
-      FieldName: "INITIATION_TIMESTAMP",
-      Order: "DESCENDING", // Sort by most recent first
-    },
-  };
+//     if (phoneNumbers.length === 0) {
+//       throw new Error('No phone numbers found in the CSV file.');
+//     }
 
-  const command = new SearchContactsCommand(params);
-  const response = await connect.send(command);
+//     // // Fetch metrics from Amazon Connect
+//     // const queueIds = await fetchAllQueueIds();
+//     // if (queueIds.length === 0) {
+//     //   throw new Error('No queues found');
+//     // }
 
-  // Debug: Log the raw response to check the data structure
-  console.log("Raw Response: ", response);
+    
+//     // // console.log('Queue IDs for Metric Command:',JSON.stringify(queueIds));
 
-  // Debug: Log the phone numbers fetched from the CSV
-  console.log("Phone Numbers from CSV: ", phoneNumbers);
+//     // // Verify that queueIds is a valid array
+//     // if (!Array.isArray(queueIds) || queueIds.length === 0) {
+//     //   throw new Error('Invalid or empty Queue IDs');
+//     // }
+    
+//     const queueId = "f8c742b9-b5ef-4948-8bbf-9a33c892023f";
+    
+//     const RArn = "arn:aws:connect:us-east-1:768637739934:instance/bd16d991-11c8-4d1e-9900-edd5ed4a9b21"
 
-  // Filter records based on phone numbers from the CSV
-  const filteredRecords = response.Contacts.filter((record) => {
-    const contactPhoneNumber = record.CustomerInfo?.PhoneNumber; // Adjust this based on your data
-    console.log("Checking contact phone number: ", contactPhoneNumber); // Debugging log
-    return phoneNumbers.includes(contactPhoneNumber);
-  });
+//     const metricDataInput = {
+//       ResourceArn: RArn,
+//       StartTime: new Date(yesterdayStart),
+//       EndTime: new Date(yesterdayEnd),
+//       Interval: { IntervalPeriod: 'DAY' },
+//       Filters: [{
+//         FilterKey: "QUEUE",
+//         FilterValues: [queueId]
+//       }],
+//       Groupings: ['QUEUE'],
+//       Metrics: [
+//         { Name: "CONTACTS_HANDLED", Unit: "COUNT" },
+//         { Name: "CONTACTS_ABANDONED", Unit: "COUNT" },
+//       ],
+//     };
 
-  // Debug: Log the filtered records
-  console.log("Filtered Contact Records: ", filteredRecords);
+//     // Log metric data input for debugging
+//     console.log('**** Metric Command ******', JSON.stringify(metricDataInput,null,));
 
-  // Extract contact attributes, agent details, and answered status
-  const contactDetails = filteredRecords.map((record) => ({
-    ContactId: record.ContactId,
-    PhoneNumber: record.CustomerInfo?.PhoneNumber,
-    InitiationMethod: record.InitiationMethod,
-    Channel: record.Channel,
-    AgentId: record.AgentInfo?.Id || "Not Assigned",
-    AgentName: record.AgentInfo?.Name || "Not Available",
-    CallAnswered: record.DisconnectTimestamp ? true : false, // Assuming call answered if disconnected
-    InitiationTimestamp: record.InitiationTimestamp,
-    DisconnectTimestamp: record.DisconnectTimestamp,
-  }));
+//     const metricCommand = new GetMetricDataV2Command(metricDataInput);
+//     const metricResponse = await client.send(metricCommand);
 
-  return contactDetails;
-}
+//     const contactDetails = [];
 
-// Lambda function handler using ES modules syntax
-export const handler = async (event) => {
-  try {
-    const bucketName = "customeroutbound-data"; // Your S3 bucket name
-    const csvFileName = "CustomerOutboundNumber.csv"; // CSV file name
-    const instanceId = "bd16d991-11c8-4d1e-9900-edd5ed4a9b21"; // Your Connect instance ID
-    const startDate = new Date(); // Set your start date for the search
-    startDate.setDate(startDate.getDate() - 1); // Start from yesterday
-    const endDate = new Date(); // Set your end date for the search
-    endDate.setDate(endDate.getDate() - 1); // End on yesterday
+//     // Extract and format contact details
+//     for (const result of metricResponse.MetricResults) {
+//       console.log("res",metricResponse.MetricResults )
+//       const agentId = result.Dimensions?.AGENT || 'N/A';
+//       console.log("agent",agentId)
+//       const phoneNumber = result.Dimensions?.PhoneNumber || 'N/A';
+//       const disposition = result.Dimensions?.Disposition || 'Unknown';
+//       const contactId = "09f2c3c7-c424-4ad2-be1f-246be15b51a4";
+      
+//       console.log('**cID:', contactId)
 
-    // Step 1: Get phone numbers from CSV
-    const phoneNumbers = await getPhoneNumbersFromCSV(bucketName, csvFileName);
-    console.log("Fetched Phone Numbers from CSV: ", phoneNumbers);
+//       for (const collection of result.Collections) {
+//         if (collection.Metric.Name === 'CONTACTS_HANDLED' && collection.Value > 0) {
+//           // Fetch contact attributes from Amazon Connect
+//           const attributesCommand = new GetContactAttributesCommand({
+//             InstanceId: instanceId,
+//             InitialContactId: contactId,
+            
+            
+            
+//           });
+          
+//           console.log('sending GetContactAttributesCommand with contact id', contactId)
+          
+          
 
-    // Step 2: Fetch outbound contact records from Amazon Connect
-    const contactDetails = await fetchOutboundContactRecords(instanceId, startDate, endDate, phoneNumbers);
-    console.log("Fetched Contact Details: ", contactDetails);
+//           const attributesResponse = await client.send(attributesCommand);
 
-    // Return the contact details as the response
-    return {
-      statusCode: 200,
-      body: JSON.stringify(contactDetails),
-    };
-  } catch (error) {
-    console.error("Error occurred: ", error);
-    return {
-      statusCode: 500,
-      body: JSON.stringify({ message: "Internal Server Error", error: error.message }),
-    };
-  }
-};
+//           contactDetails.push({
+//             contactId,
+//             agentId,
+//             timestamp: new Date().toISOString(),
+//             outboundPhoneNumber: phoneNumber,
+//             disposition: disposition || 'Completed',
+//             attributes: attributesResponse.Attributes || {},
+//           });
+//         } else if (collection.Metric.Name === 'CONTACTS_ABANDONED' && collection.Value > 0) {
+//           contactDetails.push({
+//             contactId,
+//             agentId,
+//             timestamp: new Date().toISOString(),
+//             outboundPhoneNumber: phoneNumber,
+//             disposition: 'Abandoned',
+//             attributes: {},
+//           });
+//         }
+//       }
+//     }
+
+//     return {
+//       statusCode: 200,
+//       body: JSON.stringify({
+//         message: 'Contact details fetched successfully.',
+//         contactDetails,
+//       }),
+//     };
+//   } catch (error) {
+//     console.error('Error processing the Lambda function:', error);
+//     return {
+//       statusCode: 500,
+//       body: JSON.stringify({ error: error.message, details: error.stack }),
+//     };
+//   }
+// };
