@@ -93,7 +93,8 @@ async function fetchOutboundContactRecords(instanceId, startDate, endDate, phone
   return contactDetails;
 }
 
-exports.handler = async (event) => {
+// Lambda function handler using ES modules syntax
+export const handler = async (event) => {
   try {
     const bucketName = "customeroutbound-data"; // Your S3 bucket name
     const csvFileName = "CustomerOutboundNumber.csv"; // CSV file name
