@@ -1,75 +1,45 @@
 import { S3Client, GetObjectCommand } from "@aws-sdk/client-s3";
-import pkg from "@aws-sdk/client-connect"; // Importing the CommonJS module
-import csv from "csv-parser"; // For parsing CSV files
+import { ConnectClient, SearchContactsCommand } from "@aws-sdk/client-connect";
+import * as csv from "csv-parser"; // Import csv-parser for parsing the CSV file
+import { Readable } from "stream"; // Import Readable from stream module to work with S3 objects
 
-const { ConnectClient, SearchContactsCommand } = pkg; // Destructure the required commands
+const connect = new ConnectClient({
+  region: "us-east-1", // Replace with your region
+});
 
-const s3 = new S3Client({ region: "us-east-1" });
-const connect = new ConnectClient({ region: "us-east-1" });
+const s3 = new S3Client({
+  region: "us-east-1", // Replace with your region
+});
 
-export const handler = async (event) => {
-  try {
-    const bucketName = "customeroutbound-data";
-    const fileName = "CustomerOutboundNumber.csv";
-    const instanceId = "bd16d991-11c8-4d1e-9900-edd5ed4a9b21";
-
-    // Calculate yesterday's start and end times
-    const { startDate, endDate } = getYesterdayTimestamps();
-
-    // Fetch phone numbers from the S3 file
-    const phoneNumbers = await getPhoneNumbersFromCsv(bucketName, fileName);
-
-    // Fetch outbound contact records
-    const contactRecords = await fetchOutboundContactRecords(instanceId, startDate, endDate, phoneNumbers);
-
-    return {
-      statusCode: 200,
-      body: JSON.stringify({
-        message: "Fetched outbound call records successfully",
-        data: contactRecords,
-      }),
-    };
-  } catch (error) {
-    console.error("Error:", error);
-    return {
-      statusCode: 500,
-      body: JSON.stringify({
-        message: "Error fetching outbound call records",
-        error: error.message,
-      }),
-    };
-  }
-};
-
-// Function to calculate yesterday's start and end timestamps
-function getYesterdayTimestamps() {
-  const now = new Date();
-  const yesterday = new Date(now);
-  yesterday.setDate(now.getDate() - 1);
-
-  const startOfDay = new Date(yesterday.setHours(0, 0, 0, 0)).toISOString();
-  const endOfDay = new Date(yesterday.setHours(23, 59, 59, 999)).toISOString();
-
-  return { startDate: startOfDay, endDate: endOfDay };
-}
-
-// Function to fetch phone numbers from a CSV file in S3
-async function getPhoneNumbersFromCsv(bucketName, fileName) {
-  const params = { Bucket: bucketName, Key: fileName };
+async function getPhoneNumbersFromCSV(bucketName, csvFileName) {
   const phoneNumbers = [];
+  const command = new GetObjectCommand({
+    Bucket: bucketName,
+    Key: csvFileName,
+  });
 
-  const stream = await s3.send(new GetObjectCommand(params));
+  const data = await s3.send(command);
+  const stream = data.Body;
+
   return new Promise((resolve, reject) => {
-    stream.Body.pipe(csv())
+    const readableStream = stream instanceof Readable ? stream : Readable.from(stream);
+    readableStream
+      .pipe(csv())
       .on("data", (row) => {
-        if (row.PhoneNumber) phoneNumbers.push(row.PhoneNumber.trim());
+        // Assuming CSV has 'PhoneNumber' field
+        if (row.PhoneNumber) {
+          phoneNumbers.push(row.PhoneNumber.trim()); // Ensure no extra spaces
+        }
       })
-      .on("end", () => resolve(phoneNumbers))
-      .on("error", (error) => reject(error));
+      .on("end", () => {
+        resolve(phoneNumbers);
+      })
+      .on("error", (error) => {
+        reject(error);
+      });
   });
 }
 
-// Function to fetch outbound contact records from Amazon Connect
 async function fetchOutboundContactRecords(instanceId, startDate, endDate, phoneNumbers) {
   const params = {
     InstanceId: instanceId,
@@ -91,10 +61,21 @@ async function fetchOutboundContactRecords(instanceId, startDate, endDate, phone
   const command = new SearchContactsCommand(params);
   const response = await connect.send(command);
 
+  // Debug: Log the raw response to check the data structure
+  console.log("Raw Response: ", response);
+
+  // Debug: Log the phone numbers fetched from the CSV
+  console.log("Phone Numbers from CSV: ", phoneNumbers);
+
   // Filter records based on phone numbers from the CSV
-  const filteredRecords = response.Contacts.filter((record) =>
-    phoneNumbers.includes(record.CustomerInfo?.PhoneNumber)
-  );
+  const filteredRecords = response.Contacts.filter((record) => {
+    const contactPhoneNumber = record.CustomerInfo?.PhoneNumber; // Adjust this based on your data
+    console.log("Checking contact phone number: ", contactPhoneNumber); // Debugging log
+    return phoneNumbers.includes(contactPhoneNumber);
+  });
+
+  // Debug: Log the filtered records
+  console.log("Filtered Contact Records: ", filteredRecords);
 
   // Extract contact attributes, agent details, and answered status
   const contactDetails = filteredRecords.map((record) => ({
@@ -111,3 +92,35 @@ async function fetchOutboundContactRecords(instanceId, startDate, endDate, phone
 
   return contactDetails;
 }
+
+exports.handler = async (event) => {
+  try {
+    const bucketName = "customeroutbound-data"; // Your S3 bucket name
+    const csvFileName = "CustomerOutboundNumber.csv"; // CSV file name
+    const instanceId = "bd16d991-11c8-4d1e-9900-edd5ed4a9b21"; // Your Connect instance ID
+    const startDate = new Date(); // Set your start date for the search
+    startDate.setDate(startDate.getDate() - 1); // Start from yesterday
+    const endDate = new Date(); // Set your end date for the search
+    endDate.setDate(endDate.getDate() - 1); // End on yesterday
+
+    // Step 1: Get phone numbers from CSV
+    const phoneNumbers = await getPhoneNumbersFromCSV(bucketName, csvFileName);
+    console.log("Fetched Phone Numbers from CSV: ", phoneNumbers);
+
+    // Step 2: Fetch outbound contact records from Amazon Connect
+    const contactDetails = await fetchOutboundContactRecords(instanceId, startDate, endDate, phoneNumbers);
+    console.log("Fetched Contact Details: ", contactDetails);
+
+    // Return the contact details as the response
+    return {
+      statusCode: 200,
+      body: JSON.stringify(contactDetails),
+    };
+  } catch (error) {
+    console.error("Error occurred: ", error);
+    return {
+      statusCode: 500,
+      body: JSON.stringify({ message: "Internal Server Error", error: error.message }),
+    };
+  }
+};
