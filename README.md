@@ -1,7 +1,12 @@
-lambda  will trigger everyday morning,  from the csv file it will fetch the customer phone numbers , it will take the yesterday records from the amazon connect whether the call has been answered or not. print them in the console the result. if answered what is the agent id and all the required info similarly for not answered. which means I need the contact attricbutes for that particular phonenumber
+csv file name: CustomerOutboundNumber.csv
 
-becuket name : customeroutbound-data
+s3 bucket name: customeroutbound-data
 
-csv file : CustomerOutboundNumber.csv
+intsance id: bd16d991-11c8-4d1e-9900-edd5ed4a9b21
 
-instance id: bd16d991-11c8-4d1e-9900-edd5ed4a9b21
+structure of csv
+
+Name	PhoneNumber
+Mohan	9949921498
+Seshu	8639694701
+![Uploading image.png…]()
