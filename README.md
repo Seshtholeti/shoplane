@@ -1,117 +1,113 @@
-import { ConnectClient, SearchContactsCommand } from "@aws-sdk/client-connect"; // ES Modules import
-// const { ConnectClient, SearchContactsCommand } = require("@aws-sdk/client-connect"); // CommonJS import
-const client = new ConnectClient(config);
-const input = { // SearchContactsRequest
-  InstanceId: "STRING_VALUE", // required
-  TimeRange: { // SearchContactsTimeRange
-    Type: "INITIATION_TIMESTAMP" || "SCHEDULED_TIMESTAMP" || "CONNECTED_TO_AGENT_TIMESTAMP" || "DISCONNECT_TIMESTAMP", // required
-    StartTime: new Date("TIMESTAMP"), // required
-    EndTime: new Date("TIMESTAMP"), // required
-  },
-  SearchCriteria: { // SearchCriteria
-    AgentIds: [ // AgentResourceIdList
-      "STRING_VALUE",
-    ],
-    AgentHierarchyGroups: { // AgentHierarchyGroups
-      L1Ids: [ // HierarchyGroupIdList
-        "STRING_VALUE",
-      ],
-      L2Ids: [
-        "STRING_VALUE",
-      ],
-      L3Ids: [
-        "STRING_VALUE",
-      ],
-      L4Ids: [
-        "STRING_VALUE",
-      ],
-      L5Ids: [
-        "STRING_VALUE",
-      ],
-    },
-    Channels: [ // ChannelList
-      "VOICE" || "CHAT" || "TASK" || "EMAIL",
-    ],
-    ContactAnalysis: { // ContactAnalysis
-      Transcript: { // Transcript
-        Criteria: [ // TranscriptCriteriaList // required
-          { // TranscriptCriteria
-            ParticipantRole: "AGENT" || "CUSTOMER" || "SYSTEM" || "CUSTOM_BOT" || "SUPERVISOR", // required
-            SearchText: [ // SearchTextList // required
-              "STRING_VALUE",
-            ],
-            MatchType: "MATCH_ALL" || "MATCH_ANY", // required
-          },
-        ],
-        MatchType: "MATCH_ALL" || "MATCH_ANY",
-      },
-    },
-    InitiationMethods: [ // InitiationMethodList
-      "INBOUND" || "OUTBOUND" || "TRANSFER" || "QUEUE_TRANSFER" || "CALLBACK" || "API" || "DISCONNECT" || "MONITOR" || "EXTERNAL_OUTBOUND" || "WEBRTC_API" || "AGENT_REPLY" || "FLOW",
-    ],
-    QueueIds: [ // QueueIdList
-      "STRING_VALUE",
-    ],
-    SearchableContactAttributes: { // SearchableContactAttributes
-      Criteria: [ // SearchableContactAttributesCriteriaList // required
-        { // SearchableContactAttributesCriteria
-          Key: "STRING_VALUE", // required
-          Values: [ // SearchableContactAttributeValueList // required
-            "STRING_VALUE",
-          ],
-        },
-      ],
-      MatchType: "MATCH_ALL" || "MATCH_ANY",
-    },
-    SearchableSegmentAttributes: { // SearchableSegmentAttributes
-      Criteria: [ // SearchableSegmentAttributesCriteriaList // required
-        { // SearchableSegmentAttributesCriteria
-          Key: "STRING_VALUE", // required
-          Values: [ // SearchableSegmentAttributeValueList // required
-            "STRING_VALUE",
-          ],
-        },
-      ],
-      MatchType: "MATCH_ALL" || "MATCH_ANY",
-    },
-  },
-  MaxResults: Number("int"),
-  NextToken: "STRING_VALUE",
-  Sort: { // Sort
-    FieldName: "INITIATION_TIMESTAMP" || "SCHEDULED_TIMESTAMP" || "CONNECTED_TO_AGENT_TIMESTAMP" || "DISCONNECT_TIMESTAMP" || "INITIATION_METHOD" || "CHANNEL", // required
-    Order: "ASCENDING" || "DESCENDING", // required
-  },
-};
-const command = new SearchContactsCommand(input);
-const response = await client.send(command);
-// { // SearchContactsResponse
-//   Contacts: [ // Contacts // required
-//     { // ContactSearchSummary
-//       Arn: "STRING_VALUE",
-//       Id: "STRING_VALUE",
-//       InitialContactId: "STRING_VALUE",
-//       PreviousContactId: "STRING_VALUE",
-//       InitiationMethod: "INBOUND" || "OUTBOUND" || "TRANSFER" || "QUEUE_TRANSFER" || "CALLBACK" || "API" || "DISCONNECT" || "MONITOR" || "EXTERNAL_OUTBOUND" || "WEBRTC_API" || "AGENT_REPLY" || "FLOW",
-//       Channel: "VOICE" || "CHAT" || "TASK" || "EMAIL",
-//       QueueInfo: { // ContactSearchSummaryQueueInfo
-//         Id: "STRING_VALUE",
-//         EnqueueTimestamp: new Date("TIMESTAMP"),
-//       },
-//       AgentInfo: { // ContactSearchSummaryAgentInfo
-//         Id: "STRING_VALUE",
-//         ConnectedToAgentTimestamp: new Date("TIMESTAMP"),
-//       },
-//       InitiationTimestamp: new Date("TIMESTAMP"),
-//       DisconnectTimestamp: new Date("TIMESTAMP"),
-//       ScheduledTimestamp: new Date("TIMESTAMP"),
-//       SegmentAttributes: { // ContactSearchSummarySegmentAttributes
-//         "<keys>": { // ContactSearchSummarySegmentAttributeValue
-//           ValueString: "STRING_VALUE",
-//         },
-//       },
-//     },
-//   ],
-//   NextToken: "STRING_VALUE",
-//   TotalCount: Number("long"),
-// };
+import { S3Client, GetObjectCommand } from "@aws-sdk/client-s3";
+import pkg from "@aws-sdk/client-connect"; // Importing the CommonJS module
+import csv from "csv-parser"; // For parsing CSV files
 
+const { ConnectClient, SearchContactsCommand } = pkg; // Destructure the required commands
+
+const s3 = new S3Client({ region: "us-east-1" });
+const connect = new ConnectClient({ region: "us-east-1" });
+
+export const handler = async (event) => {
+  try {
+    const bucketName = "customeroutbound-data";
+    const fileName = "CustomerOutboundNumber.csv";
+    const instanceId = "bd16d991-11c8-4d1e-9900-edd5ed4a9b21";
+
+    // Calculate yesterday's start and end times
+    const { startDate, endDate } = getYesterdayTimestamps();
+
+    // Fetch phone numbers from the S3 file
+    const phoneNumbers = await getPhoneNumbersFromCsv(bucketName, fileName);
+
+    // Fetch outbound contact records
+    const contactRecords = await fetchOutboundContactRecords(instanceId, startDate, endDate, phoneNumbers);
+
+    return {
+      statusCode: 200,
+      body: JSON.stringify({
+        message: "Fetched outbound call records successfully",
+        data: contactRecords,
+      }),
+    };
+  } catch (error) {
+    console.error("Error:", error);
+    return {
+      statusCode: 500,
+      body: JSON.stringify({
+        message: "Error fetching outbound call records",
+        error: error.message,
+      }),
+    };
+  }
+};
+
+// Function to calculate yesterday's start and end timestamps
+function getYesterdayTimestamps() {
+  const now = new Date();
+  const yesterday = new Date(now);
+  yesterday.setDate(now.getDate() - 1);
+
+  const startOfDay = new Date(yesterday.setHours(0, 0, 0, 0)).toISOString();
+  const endOfDay = new Date(yesterday.setHours(23, 59, 59, 999)).toISOString();
+
+  return { startDate: startOfDay, endDate: endOfDay };
+}
+
+// Function to fetch phone numbers from a CSV file in S3
+async function getPhoneNumbersFromCsv(bucketName, fileName) {
+  const params = { Bucket: bucketName, Key: fileName };
+  const phoneNumbers = [];
+
+  const stream = await s3.send(new GetObjectCommand(params));
+  return new Promise((resolve, reject) => {
+    stream.Body.pipe(csv())
+      .on("data", (row) => {
+        if (row.PhoneNumber) phoneNumbers.push(row.PhoneNumber.trim());
+      })
+      .on("end", () => resolve(phoneNumbers))
+      .on("error", (error) => reject(error));
+  });
+}
+
+// Function to fetch outbound contact records from Amazon Connect
+async function fetchOutboundContactRecords(instanceId, startDate, endDate, phoneNumbers) {
+  const params = {
+    InstanceId: instanceId,
+    TimeRange: {
+      Type: "INITIATION_TIMESTAMP", // Filtering by initiation timestamp
+      StartTime: new Date(startDate),
+      EndTime: new Date(endDate),
+    },
+    SearchCriteria: {
+      InitiationMethods: ["OUTBOUND"], // Only fetch outbound calls
+    },
+    MaxResults: 100, // Adjust the number of results as needed
+    Sort: {
+      FieldName: "INITIATION_TIMESTAMP",
+      Order: "DESCENDING", // Sort by most recent first
+    },
+  };
+
+  const command = new SearchContactsCommand(params);
+  const response = await connect.send(command);
+
+  // Filter records based on phone numbers from the CSV
+  const filteredRecords = response.Contacts.filter((record) =>
+    phoneNumbers.includes(record.CustomerInfo?.PhoneNumber)
+  );
+
+  // Extract contact attributes, agent details, and answered status
+  const contactDetails = filteredRecords.map((record) => ({
+    ContactId: record.ContactId,
+    PhoneNumber: record.CustomerInfo?.PhoneNumber,
+    InitiationMethod: record.InitiationMethod,
+    Channel: record.Channel,
+    AgentId: record.AgentInfo?.Id || "Not Assigned",
+    AgentName: record.AgentInfo?.Name || "Not Available",
+    CallAnswered: record.DisconnectTimestamp ? true : false, // Assuming call answered if disconnected
+    InitiationTimestamp: record.InitiationTimestamp,
+    DisconnectTimestamp: record.DisconnectTimestamp,
+  }));
+
+  return contactDetails;
+}
