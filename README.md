@@ -1,6 +1,6 @@
 import { S3Client, GetObjectCommand } from '@aws-sdk/client-s3';
 import csvParser from 'csv-parser';
-import { ConnectClient, GetCurrentMetricDataCommand } from '@aws-sdk/client-connect';
+import { ConnectClient, ListContactsCommand, GetContactAttributesCommand } from '@aws-sdk/client-connect';
 
 const s3 = new S3Client();
 const connect = new ConnectClient();
@@ -81,54 +81,46 @@ const fetchPhoneNumbersFromCSV = async (bucketName, fileName) => {
 const getCallDetails = async (startTime, endTime, instanceId, phoneNumbers) => {
   const callDetails = [];
 
-  for (const number of phoneNumbers) {
-    // Fetching metrics for the specific number within the time range
-    try {
-      const metricsParams = {
+  try {
+    // Loop through each phone number and get its call details
+    for (const number of phoneNumbers) {
+      // Step 1: List the contacts for a given time range
+      const listContactsParams = {
         InstanceId: instanceId,
-        Filters: {
-          QueueId: '', // Specify a queue ID if needed
+        StartTime: startTime,
+        EndTime: endTime,
+        ContactFilter: {
           Channel: 'VOICE',
-          StartTime: startTime,
-          EndTime: endTime,
+          CustomerPhoneNumber: number, // Filter by phone number
         },
-        Groupings: ['AGENT'],
-        HistoricalMetrics: [
-          {
-            Name: 'CONTACTS_ANSWERED',
-            Unit: 'COUNT',
-          },
-        ],
       };
 
-      const command = new GetCurrentMetricDataCommand(metricsParams);
-      const metricsResponse = await connect.send(command);
+      const listContactsCommand = new ListContactsCommand(listContactsParams);
+      const contactsData = await connect.send(listContactsCommand);
 
-      // Process metrics to find relevant agent details
-      metricsResponse.MetricResults.forEach(result => {
-        if (result.Name === 'CONTACTS_ANSWERED') {
-          result.Value.forEach(contact => {
-            if (contact.AgentId && contact.ContactId) { // Assuming AgentId is available in response
-              callDetails.push({
-                outboundNumber: number,
-                agentId: contact.AgentId,
-                disposition: contact.Disposition || 'Answered', // Modify as per your logic
-                timestamp: contact.StartTimestamp || new Date().toISOString(),
-              });
-            }
-          });
-        }
-      });
-      
-    } catch (error) {
-      console.error(`Error fetching metrics for number ${number}:`, error);
-      callDetails.push({
-        outboundNumber: number,
-        agentId: 'Unknown',
-        disposition: 'Error fetching data',
-        timestamp: new Date().toISOString(),
-      });
+      // Step 2: Fetch detailed attributes for each contact
+      for (const contact of contactsData.ContactList) {
+        const contactAttributesParams = {
+          InstanceId: instanceId,
+          ContactId: contact.ContactId,
+        };
+
+        const getAttributesCommand = new GetContactAttributesCommand(contactAttributesParams);
+        const attributesData = await connect.send(getAttributesCommand);
+
+        // Step 3: Push the detailed call information
+        callDetails.push({
+          outboundNumber: number,
+          contactId: contact.ContactId,
+          agentId: attributesData.Attributes.AgentId,
+          disposition: attributesData.Attributes.Disposition,
+          timestamp: contact.StartTime,
+        });
+      }
     }
+  } catch (error) {
+    console.error("Error fetching call details:", error);
+    throw new Error("Error fetching call details from Amazon Connect.");
   }
 
   return callDetails;
