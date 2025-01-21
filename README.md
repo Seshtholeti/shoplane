@@ -1,6 +1,6 @@
 import fetch from 'node-fetch';
 export const handler = async (event) => {
-  const VERIFY_TOKEN = "your_verify_token";  // Replace with your custom verify token
+  const VERIFY_TOKEN = "token_123";
   try {
       // Handle GET request for webhook verification
       if (event.httpMethod === "GET") {
@@ -78,3 +78,25 @@ async function sendMessageToInstagram(senderId, messageText) {
       console.error('Error sending message to Instagram:', error);
   }
 }
+
+this is the lambda
+
+this is the config test events
+
+{
+  "httpMethod": "GET",
+  "queryStringParameters": {
+    "hub.mode": "subscribe",
+    "hub.verify_token": "token_123",
+    "hub.challenge": "challenge_string"
+  }
+}
+
+https://run4xxdsu5.execute-api.us-east-1.amazonaws.com/test
+
+this is the api
+
+when I search this api in the browser it gives  {"message":"Missing Authentication Token"}
+
+
+and in the meta account when I place this in the webhooks it says url not validated http 403 forbidden error
