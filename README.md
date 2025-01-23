@@ -1,11 +1,14 @@
+
+
 import fetch from 'node-fetch';
 export const handler = async (event) => {
   const VERIFY_TOKEN = "token_123";
+  console.log('new',event) 
   try {
       // Handle GET request for webhook verification
       if (event.httpMethod === "GET") {
           const queryParams = event.queryStringParameters;
-          // Verify the token sent by Meta for webhook validation
+          
           if (
               queryParams &&
               queryParams["hub.mode"] === "subscribe" &&
@@ -32,7 +35,7 @@ export const handler = async (event) => {
           if (!entries || entries.length === 0) {
               return { statusCode: 400, body: 'No entry found' };
           }
-          // Process each message
+          
           for (const entry of entries) {
               const messagingEvents = entry.messaging;
               if (!messagingEvents || messagingEvents.length === 0) {
@@ -42,9 +45,9 @@ export const handler = async (event) => {
               for (const messageEvent of messagingEvents) {
                   const senderId = messageEvent.sender.id;
                   const messageText = messageEvent.message.text;
-                  // Log the received message
+                  // Logging the received message
                   console.log(`Received message from ${senderId}: ${messageText}`);
-                  // Optionally, send a reply back to the Instagram user (via Facebook API)
+                  // sending a reply back to the Instagram user (via Facebook API)
                   await sendMessageToInstagram(senderId, `Thank you for your message: ${messageText}`);
               }
           }
@@ -52,7 +55,7 @@ export const handler = async (event) => {
           return { statusCode: 200, body: 'EVENT_RECEIVED' };
       }
       // If the HTTP method is not GET or POST, return a 404 error
-      return { statusCode: 404, body: 'Unsupported HTTP Method' };
+      return { statusCode: 404, body: 'KMHVC' };
   } catch (error) {
       console.error("Error processing webhook:", error);
       return { statusCode: 500, body: 'Internal Server Error' };
@@ -79,24 +82,47 @@ async function sendMessageToInstagram(senderId, messageText) {
   }
 }
 
-this is the lambda
 
-this is the config test events
-
+Response:
 {
-  "httpMethod": "GET",
-  "queryStringParameters": {
-    "hub.mode": "subscribe",
-    "hub.verify_token": "token_123",
-    "hub.challenge": "challenge_string"
+  "statusCode": 200,
+  "body": "challenge_string"
+}
+
+Function Logs:
+START RequestId: 96d744cb-a098-49bb-bf1f-bfd21a49ea3f Version: $LATEST
+2025-01-23T07:05:20.346Z	96d744cb-a098-49bb-bf1f-bfd21a49ea3f	INFO	new {
+  httpMethod: 'GET',
+  queryStringParameters: {
+    'hub.mode': 'subscribe',
+    'hub.verify_token': 'token_123',
+    'hub.challenge': 'challenge_string'
   }
 }
 
-https://run4xxdsu5.execute-api.us-east-1.amazonaws.com/test
 
-this is the api
+this is the api https://n9hdixucuf.execute-api.us-east-1.amazonaws.com/dev/meta
 
-when I search this api in the browser it gives  {"message":"Missing Authentication Token"}
+however when I paste this url in webhooks of meta it says url not validated, however if I click on verify section my lambda and api are getting triggered by sending empty events
 
 
-and in the meta account when I place this in the webhooks it says url not validated http 403 forbidden error
+
+2025-01-22T10:48:44.629Z
+START RequestId: 3131e4a3-53cb-4ba3-a15e-1d43dffc1882 Version: $LATEST
+
+START RequestId: 3131e4a3-53cb-4ba3-a15e-1d43dffc1882 Version: $LATEST
+2025-01-22T10:48:44.630Z
+2025-01-22T10:48:44.630Z	3131e4a3-53cb-4ba3-a15e-1d43dffc1882	INFO	new 
+{}
+
+
+2025-01-22T10:48:44.630Z 3131e4a3-53cb-4ba3-a15e-1d43dffc1882 INFO new {}
+2025-01-22T10:48:44.631Z
+END RequestId: 3131e4a3-53cb-4ba3-a15e-1d43dffc1882
+
+END RequestId: 3131e4a3-53cb-4ba3-a15e-1d43dffc1882
+2025-01-22T10:48:44.631Z
+REPORT RequestId: 3131e4a3-53cb-4ba3-a15e-1d43dffc1882	Duration: 1.57 ms	Billed Duration: 2 ms	Memory Size: 128 MB	Max Memory Used: 86 MB
+
+
+
