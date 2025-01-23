@@ -1,93 +1,97 @@
+2025-01-23T09:03:56.334Z	1be8a860-88f7-4457-a35e-12a8e41767b5	INFO	Received message: "Hello!" from user USER_ID
 
-{
-    "resource": "/meta",
-    "path": "/meta",
-    "httpMethod": "GET",
-    "headers": {
-        "Accept": "*/*",
-        "Accept-Encoding": "deflate, gzip",
-        "Host": "n9hdixucuf.execute-api.us-east-1.amazonaws.com",
-        "User-Agent": "facebookplatform/1.0 (+http://developers.facebook.com)",
-        "X-Amzn-Trace-Id": "Root=1-6791fc3f-5e3cb7901ed80154515727de",
-        "X-Forwarded-For": "69.171.234.113",
-        "X-Forwarded-Port": "443",
-        "X-Forwarded-Proto": "https"
-    },
-    "multiValueHeaders": {
-        "Accept": [
-            "*/*"
-        ],
-        "Accept-Encoding": [
-            "deflate, gzip"
-        ],
-        "Host": [
-            "n9hdixucuf.execute-api.us-east-1.amazonaws.com"
-        ],
-        "User-Agent": [
-            "facebookplatform/1.0 (+http://developers.facebook.com)"
-        ],
-        "X-Amzn-Trace-Id": [
-            "Root=1-6791fc3f-5e3cb7901ed80154515727de"
-        ],
-        "X-Forwarded-For": [
-            "69.171.234.113"
-        ],
-        "X-Forwarded-Port": [
-            "443"
-        ],
-        "X-Forwarded-Proto": [
-            "https"
+
+2025-01-23T09:03:56.454Z	1be8a860-88f7-4457-a35e-12a8e41767b5	ERROR	Unhandled Promise Rejection 	{
+    "errorType": "Runtime.UnhandledPromiseRejection",
+    "errorMessage": "ReferenceError: PAGE_ACCESS_TOKEN is not defined",
+    "reason": {
+        "errorType": "ReferenceError",
+        "errorMessage": "PAGE_ACCESS_TOKEN is not defined",
+        "stack": [
+            "ReferenceError: PAGE_ACCESS_TOKEN is not defined",
+            "    at sendReplyToUser (file:///var/task/index.mjs:128:77)",
+            "    at file:///var/task/index.mjs:114:26",
+            "    at Array.forEach (<anonymous>)",
+            "    at file:///var/task/index.mjs:109:25",
+            "    at Array.forEach (<anonymous>)",
+            "    at Runtime.handler (file:///var/task/index.mjs:106:23)",
+            "    at Runtime.handleOnceNonStreaming (file:///var/runtime/index.mjs:1173:29)"
         ]
     },
-    "queryStringParameters": {
-        "hub.challenge": "1496012947",
-        "hub.mode": "subscribe",
-        "hub.verify_token": "token_123"
-    },
-    "multiValueQueryStringParameters": {
-        "hub.challenge": [
-            "1496012947"
-        ],
-        "hub.mode": [
-            "subscribe"
-        ],
-        "hub.verify_token": [
-            "token_123"
-        ]
-    },
-    "pathParameters": null,
-    "stageVariables": null,
-    "requestContext": {
-        "resourceId": "mug2qu",
-        "resourcePath": "/meta",
-        "httpMethod": "GET",
-        "extendedRequestId": "E1RaBGmcoAMEqTA=",
-        "requestTime": "23/Jan/2025:08:22:23 +0000",
-        "path": "/dev/meta",
-        "accountId": "768637739934",
-        "protocol": "HTTP/1.1",
-        "stage": "dev",
-        "domainPrefix": "n9hdixucuf",
-        "requestTimeEpoch": 1737620543701,
-        "requestId": "fe1225a5-ee2a-4fc8-8989-4a8287939274",
-        "identity": {
-            "cognitoIdentityPoolId": null,
-            "accountId": null,
-            "cognitoIdentityId": null,
-            "caller": null,
-            "sourceIp": "69.171.234.113",
-            "principalOrgId": null,
-            "accessKey": null,
-            "cognitoAuthenticationType": null,
-            "cognitoAuthenticationProvider": null,
-            "userArn": null,
-            "userAgent": "facebookplatform/1.0 (+http://developers.facebook.com)",
-            "user": null
-        },
-        "domainName": "n9hdixucuf.execute-api.us-east-1.amazonaws.com",
-        "deploymentId": "xow2f2",
-        "apiId": "n9hdixucuf"
-    },
-    "body": null,
-    "isBase64Encoded": false
+    "promise": {},
+    "stack": [
+        "Runtime.UnhandledPromiseRejection: ReferenceError: PAGE_ACCESS_TOKEN is not defined",
+        "    at process.<anonymous> (file:///var/runtime/index.mjs:1276:17)",
+        "    at process.emit (node:events:518:28)",
+        "    at emitUnhandledRejection (node:internal/process/promises:252:13)",
+        "    at throwUnhandledRejectionsMode (node:internal/process/promises:388:19)",
+        "    at processPromiseRejections (node:internal/process/promises:475:17)",
+        "    at process.processTicksAndRejections (node:internal/process/task_queues:106:32)"
+    ]
+}
+
+
+[ERROR] [1737623036474] LAMBDA_RUNTIME Failed to post handler success response. Http response code: 403.
+
+
+lambda code
+
+import fetch from 'node-fetch';
+export const handler = async (event) => {
+   const VERIFY_TOKEN = "token_123"; 
+   const PAGE_ACCESS_TOKEN = "EAAX8zKLRFn8BO4NcgAnFzaHkFQq116F0JY1cMzJSMyeo8IRmglZBbP4TxwEmGqvprQmZCkg8JKSaylI2o066YYUaFxOntbeHChZCO4D3hAPBHQgMZA5YZCzzwUItHWCaG6u0sRF9HmKVsAC31gsFSHNIZB93ZAJBx4DhTjTNW3HygQwma0eeYEa914HLnRHCwEVKgZDZD"; 
+   // Handle GET Request (Webhook Validation)
+   if (event.httpMethod === "GET") {
+       const params = event.queryStringParameters;
+       if (params["hub.mode"] === "subscribe" && params["hub.verify_token"] === VERIFY_TOKEN) {
+           return {
+               statusCode: 200,
+               body: params["hub.challenge"], // Return the challenge value
+           };
+       }
+       return { statusCode: 403, body: "Forbidden - Validation Failed" }; // Invalid token or mode
+   }
+   // Handle POST Request (Incoming Events)
+   if (event.httpMethod === "POST") {
+       const body = JSON.parse(event.body);
+       if (body.object === "page") {
+           // Process each entry in the event
+           body.entry.forEach((entry) => {
+               const messages = entry.messaging;
+               // Handle each message
+               messages.forEach(async (messageEvent) => {
+                   const senderId = messageEvent.sender.id; // User ID
+                   const messageText = messageEvent.message?.text || ""; // Received text message
+                   console.log(`Received message: "${messageText}" from user ${senderId}`);
+                   // Example: Send a reply to the user
+                   await sendReplyToUser(senderId, `You sent: "${messageText}"`);
+               });
+           });
+           return {
+               statusCode: 200,
+               body: "EVENT_RECEIVED", // Meta expects this exact response
+           };
+       }
+       return { statusCode: 404, body: "Unsupported Event Type" };
+   }
+   return { statusCode: 404, body: "Unsupported HTTP Method" };
+};
+// Function to Send a Reply to the User
+async function sendReplyToUser(senderId, message) {
+   const url = `https://graph.facebook.com/v16.0/me/messages?access_token=${PAGE_ACCESS_TOKEN}`;
+   const body = {
+       recipient: { id: senderId },
+       message: { text: message },
+   };
+   try {
+       const response = await fetch(url, {
+           method: "POST",
+           headers: { "Content-Type": "application/json" },
+           body: JSON.stringify(body),
+       });
+       const data = await response.json();
+       console.log("Reply sent successfully:", data);
+   } catch (error) {
+       console.error("Error sending reply:", error);
+   }
 }
