@@ -125,4 +125,19 @@ END RequestId: 3131e4a3-53cb-4ba3-a15e-1d43dffc1882
 REPORT RequestId: 3131e4a3-53cb-4ba3-a15e-1d43dffc1882	Duration: 1.57 ms	Billed Duration: 2 ms	Memory Size: 128 MB	Max Memory Used: 86 MB
 
 
+these are my config test events :
+{
+  "httpMethod": "POST",
+  "body": "{\"entry\":[{\"messaging\":[{\"sender\":{\"id\":\"123456\"},\"message\":{\"text\":\"Hello!\"}}]}]}"
+}
 
+
+
+{
+  "httpMethod": "GET",
+  "queryStringParameters": {
+    "hub.mode": "subscribe",
+    "hub.verify_token": "token_123",
+    "hub.challenge": "challenge_string"
+  }
+}
