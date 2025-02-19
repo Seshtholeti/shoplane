@@ -4,9 +4,9 @@ import fetch from 'node-fetch';
 
 const VERIFY_TOKEN = "token_123";
 
-const CONNECT_INSTANCE_ID = "your-connect-instance-id";  // Replace with your Amazon Connect Instance ID
+const CONNECT_INSTANCE_ID = "your-connect-instance-id";  
 
-const CONTACT_FLOW_ID = "your-contact-flow-id";  // Replace with your Contact Flow ID
+const CONTACT_FLOW_ID = "your-contact-flow-id"; 
 
 const REGION = "us-east-1";  
 
@@ -177,3 +177,4 @@ async function sendMessageToInstagram(senderId, messageText) {
     }
 
 } 
+
