@@ -1,95 +1,179 @@
-2025-02-18T04:35:56.408Z	e22709d0-b709-4a69-bbea-3103141e8950	INFO	New Event: 
-{
-    "resource": "/meta",
-    "path": "/meta",
-    "httpMethod": "POST",
-    "headers": {
-        "Accept": "*/*",
-        "Accept-Encoding": "deflate, gzip",
-        "Content-Type": "application/json",
-        "Host": "n9hdixucuf.execute-api.us-east-1.amazonaws.com",
-        "Instagram-API-Version": "v21.0",
-        "User-Agent": "facebookexternalua",
-        "X-Amzn-Trace-Id": "Root=1-67b40e2c-042d443845b4bc1b6ba88630",
-        "X-Forwarded-For": "69.171.251.5",
-        "X-Forwarded-Port": "443",
-        "X-Forwarded-Proto": "https",
-        "X-Hub-Signature": "sha1=2ec530119cc0bec6cd8ba62bcda07db56ea630b4",
-        "X-Hub-Signature-256": "sha256=d74137dd6e1f899e117d60b3c8cb592842fa8e95206b476e3622e0e2474a5c08"
-    },
-    "multiValueHeaders": {
-        "Accept": [
-            "*/*"
-        ],
-        "Accept-Encoding": [
-            "deflate, gzip"
-        ],
-        "Content-Type": [
-            "application/json"
-        ],
-        "Host": [
-            "n9hdixucuf.execute-api.us-east-1.amazonaws.com"
-        ],
-        "Instagram-API-Version": [
-            "v21.0"
-        ],
-        "User-Agent": [
-            "facebookexternalua"
-        ],
-        "X-Amzn-Trace-Id": [
-            "Root=1-67b40e2c-042d443845b4bc1b6ba88630"
-        ],
-        "X-Forwarded-For": [
-            "69.171.251.5"
-        ],
-        "X-Forwarded-Port": [
-            "443"
-        ],
-        "X-Forwarded-Proto": [
-            "https"
-        ],
-        "X-Hub-Signature": [
-            "sha1=2ec530119cc0bec6cd8ba62bcda07db56ea630b4"
-        ],
-        "X-Hub-Signature-256": [
-            "sha256=d74137dd6e1f899e117d60b3c8cb592842fa8e95206b476e3622e0e2474a5c08"
-        ]
-    },
-    "queryStringParameters": null,
-    "multiValueQueryStringParameters": null,
-    "pathParameters": null,
-    "stageVariables": null,
-    "requestContext": {
-        "resourceId": "mug2qu",
-        "resourcePath": "/meta",
-        "httpMethod": "POST",
-        "extendedRequestId": "GKcm-EojoAMEqcw=",
-        "requestTime": "18/Feb/2025:04:35:56 +0000",
-        "path": "/dev/meta",
-        "accountId": "768637739934",
-        "protocol": "HTTP/1.1",
-        "stage": "dev",
-        "domainPrefix": "n9hdixucuf",
-        "requestTimeEpoch": 1739853356205,
-        "requestId": "c6753c61-03b5-4deb-8088-d105a6d341aa",
-        "identity": {
-            "cognitoIdentityPoolId": null,
-            "accountId": null,
-            "cognitoIdentityId": null,
-            "caller": null,
-            "sourceIp": "69.171.251.5",
-            "principalOrgId": null,
-            "accessKey": null,
-            "cognitoAuthenticationType": null,
-            "cognitoAuthenticationProvider": null,
-            "userArn": null,
-            "userAgent": "facebookexternalua",
-            "user": null
-        },
-        "domainName": "n9hdixucuf.execute-api.us-east-1.amazonaws.com",
-        "deploymentId": "o5cidc",
-        "apiId": "n9hdixucuf"
-    },
-    "body": "{\"object\":\"instagram\",\"entry\":[{\"time\":1739853355972,\"id\":\"17841401165135019\",\"messaging\":[{\"sender\":{\"id\":\"1089888002823180\"},\"recipient\":{\"id\":\"17841401165135019\"},\"timestamp\":1739853355214,\"message\":{\"mid\":\"aWdfZAG1faXRlbToxOklHTWVzc2FnZAUlEOjE3ODQxNDAxMTY1MTM1MDE5OjM0MDI4MjM2Njg0MTcxMDMwMTI0NDI1OTY1MzU3NDEyMzk2ODEyNDozMjA5NDYyOTU2OTQzNDQ0OTU3MDczMjcwNzM4NDY1NTg3MgZDZD\",\"text\":\"Hi today is Tuesday\"}}]}]}",
-    "isBase64Encoded": false
+import AWS from 'aws-sdk';
+
+import fetch from 'node-fetch';
+
+const VERIFY_TOKEN = "token_123";
+
+const CONNECT_INSTANCE_ID = "your-connect-instance-id";  // Replace with your Amazon Connect Instance ID
+
+const CONTACT_FLOW_ID = "your-contact-flow-id";  // Replace with your Contact Flow ID
+
+const REGION = "us-east-1";  
+
+const PAGE_ACCESS_TOKEN = "EAAFvByAHUHEBO58A0T8UdgSWAG9P9lJFkZBZAaUeK8o8KZCYkPv9qHZCVCirlf24Vh2ZBnajEKRui1J1pPVHPUgqUDxPapMZABnzHmUrP6eNHZBsuPMTlCpWLVru8XZAGSINyaDU2nspNMEZCIXrumd3FLpNitBReCvVKFuGT2s4O2BJcOTCxc1fZByZBvz38EYNGD0sqxjp01I6WkN2x30kR6WYGEntzAZD";  // Replace with your valid Meta access token
+
+const connect = new AWS.Connect({ region: REGION });
+
+export const handler = async (event) => {
+
+    console.log('New Event:', JSON.stringify(event, null, 2));
+
+    try {
+
+        if (event.httpMethod === "GET") {
+
+            const queryParams = event.queryStringParameters;
+
+            if (queryParams &&
+
+                queryParams["hub.mode"] === "subscribe" &&
+
+                queryParams["hub.verify_token"] === VERIFY_TOKEN) {
+
+                console.log("Webhook verified successfully");
+
+                return { statusCode: 200, body: queryParams["hub.challenge"] };
+
+            } else {
+
+                console.error("Verification failed");
+
+                return { statusCode: 403, body: "Forbidden" };
+
+            }
+
+        }
+
+        if (event.httpMethod === "POST") {
+
+            const body = JSON.parse(event.body);
+
+            if (!body.entry || body.entry.length === 0) {
+
+                return { statusCode: 400, body: "No entry found" };
+
+            }
+
+            for (const entry of body.entry) {
+
+                const messagingEvents = entry.messaging;
+
+                if (messagingEvents && messagingEvents.length > 0) {
+
+                    for (const messageEvent of messagingEvents) {
+
+                        const senderId = messageEvent.sender.id;
+
+                        // Handle text messages
+
+                        if (messageEvent.message && messageEvent.message.text) {
+
+                            const messageText = messageEvent.message.text;
+
+                            console.log(`Received message from ${senderId}: ${messageText}`);
+
+                            // Start a chat contact in Amazon Connect
+
+                            await startChatContact(senderId, messageText);
+
+                        }
+
+                        // Handle reactions
+
+                        else if (messageEvent.reaction) {
+
+                            const reaction = messageEvent.reaction.reaction;
+
+                            console.log(`Received reaction from ${senderId}: ${reaction}`);
+
+                        }
+
+                    }
+
+                }
+
+            }
+
+            return { statusCode: 200, body: "EVENT_RECEIVED" };
+
+        }
+
+        return { statusCode: 404, body: "Not Found" };
+
+    } catch (error) {
+
+        console.error("Error processing webhook:", error);
+
+        return { statusCode: 500, body: "Internal Server Error" };
+
+    }
+
+};
+
+// Function to start a chat in Amazon Connect
+
+async function startChatContact(senderId, messageText) {
+
+    const params = {
+
+        InstanceId: CONNECT_INSTANCE_ID,
+
+        ContactFlowId: CONTACT_FLOW_ID,
+
+        ParticipantDetails: { DisplayName: `IG_${senderId}` },
+
+        Attributes: { senderId: senderId }
+
+    };
+
+    try {
+
+        const data = await connect.startChatContact(params).promise();
+
+        console.log('Chat started in Amazon Connect:', data);
+
+    } catch (error) {
+
+        console.error('Error starting chat in Amazon Connect:', error);
+
+    }
+
 }
+
+// Function to send agent replies back to Instagram
+
+async function sendMessageToInstagram(senderId, messageText) {
+
+    const url = `https://graph.facebook.com/v12.0/me/messages?access_token=${PAGE_ACCESS_TOKEN}`;
+
+    const requestBody = {
+
+        recipient: { id: senderId },
+
+        message: { text: messageText }
+
+    };
+
+    try {
+
+        const response = await fetch(url, {
+
+            method: 'POST',
+
+            headers: { 'Content-Type': 'application/json' },
+
+            body: JSON.stringify(requestBody)
+
+        });
+
+        const result = await response.json();
+
+        console.log('Message sent to Instagram:', result);
+
+    } catch (error) {
+
+        console.error('Error sending message to Instagram:', error);
+
+    }
+
+} 
