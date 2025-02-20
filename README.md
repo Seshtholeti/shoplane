@@ -1,180 +1,23 @@
-import AWS from 'aws-sdk';
-
-import fetch from 'node-fetch';
-
-const VERIFY_TOKEN = "token_123";
-
-const CONNECT_INSTANCE_ID = "your-connect-instance-id";  
-
-const CONTACT_FLOW_ID = "your-contact-flow-id"; 
-
-const REGION = "us-east-1";  
-
-const PAGE_ACCESS_TOKEN = "EAAFvByAHUHEBO58A0T8UdgSWAG9P9lJFkZBZAaUeK8o8KZCYkPv9qHZCVCirlf24Vh2ZBnajEKRui1J1pPVHPUgqUDxPapMZABnzHmUrP6eNHZBsuPMTlCpWLVru8XZAGSINyaDU2nspNMEZCIXrumd3FLpNitBReCvVKFuGT2s4O2BJcOTCxc1fZByZBvz38EYNGD0sqxjp01I6WkN2x30kR6WYGEntzAZD";  // Replace with your valid Meta access token
-
-const connect = new AWS.Connect({ region: REGION });
-
-export const handler = async (event) => {
-
-    console.log('New Event:', JSON.stringify(event, null, 2));
-
-    try {
-
-        if (event.httpMethod === "GET") {
-
-            const queryParams = event.queryStringParameters;
-
-            if (queryParams &&
-
-                queryParams["hub.mode"] === "subscribe" &&
-
-                queryParams["hub.verify_token"] === VERIFY_TOKEN) {
-
-                console.log("Webhook verified successfully");
-
-                return { statusCode: 200, body: queryParams["hub.challenge"] };
-
-            } else {
-
-                console.error("Verification failed");
-
-                return { statusCode: 403, body: "Forbidden" };
-
-            }
-
-        }
-
-        if (event.httpMethod === "POST") {
-
-            const body = JSON.parse(event.body);
-
-            if (!body.entry || body.entry.length === 0) {
-
-                return { statusCode: 400, body: "No entry found" };
-
-            }
-
-            for (const entry of body.entry) {
-
-                const messagingEvents = entry.messaging;
-
-                if (messagingEvents && messagingEvents.length > 0) {
-
-                    for (const messageEvent of messagingEvents) {
-
-                        const senderId = messageEvent.sender.id;
-
-                        // Handle text messages
-
-                        if (messageEvent.message && messageEvent.message.text) {
-
-                            const messageText = messageEvent.message.text;
-
-                            console.log(`Received message from ${senderId}: ${messageText}`);
-
-                            // Start a chat contact in Amazon Connect
-
-                            await startChatContact(senderId, messageText);
-
-                        }
-
-                        // Handle reactions
-
-                        else if (messageEvent.reaction) {
-
-                            const reaction = messageEvent.reaction.reaction;
-
-                            console.log(`Received reaction from ${senderId}: ${reaction}`);
-
-                        }
-
-                    }
-
-                }
-
-            }
-
-            return { statusCode: 200, body: "EVENT_RECEIVED" };
-
-        }
-
-        return { statusCode: 404, body: "Not Found" };
-
-    } catch (error) {
-
-        console.error("Error processing webhook:", error);
-
-        return { statusCode: 500, body: "Internal Server Error" };
-
-    }
-
-};
-
-// Function to start a chat in Amazon Connect
-
-async function startChatContact(senderId, messageText) {
-
-    const params = {
-
-        InstanceId: CONNECT_INSTANCE_ID,
-
-        ContactFlowId: CONTACT_FLOW_ID,
-
-        ParticipantDetails: { DisplayName: `IG_${senderId}` },
-
-        Attributes: { senderId: senderId }
-
-    };
-
-    try {
-
-        const data = await connect.startChatContact(params).promise();
-
-        console.log('Chat started in Amazon Connect:', data);
-
-    } catch (error) {
-
-        console.error('Error starting chat in Amazon Connect:', error);
-
-    }
-
+2025-02-20T06:22:48.983Z
+2025-02-20T06:22:48.983Z	88fd9c80-6a3c-42fe-9ad9-9df5a1fdf87f	INFO	Received message from 1089888002823180: Hiiii
+
+2025-02-20T06:22:48.983Z 88fd9c80-6a3c-42fe-9ad9-9df5a1fdf87f INFO Received message from 1089888002823180: Hiiii
+2025-02-20T06:22:49.522Z
+2025-02-20T06:22:49.522Z	88fd9c80-6a3c-42fe-9ad9-9df5a1fdf87f	ERROR	Error starting chat in Amazon Connect: AccessDeniedException: User: arn:aws:sts::768637739934:assumed-role/amazonConnectWithInstagram-role-i7bkfqtk/amazonConnectWithInstagram is not authorized to perform: connect:StartChatContact on resource: arn:aws:connect:us-east-1:768637739934:instance/d75ee48a-a107-44fd-a22d-3f77fc7bdd38/contact-flow/arn%3Aaws%3Aconnect%3Aus-east-1%3A768637739934%3Ainstance%2Fd75ee48a-a107-44fd-a22d-3f77fc7bdd38%2Fcontact-flow%2F937c77e4-f382-4a91-b3d9-43d03b61f741
+    at Object.extractError (/opt/node_modules/aws-sdk/lib/protocol/json.js:80:27)
+    at Request.extractError (/opt/node_modules/aws-sdk/lib/protocol/rest_json.js:62:8)
+    at Request.callListeners (/opt/node_modules/aws-sdk/lib/sequential_executor.js:106:20)
+    at Request.emit (/opt/node_modules/aws-sdk/lib/sequential_executor.js:78:10)
+    at Request.emit (/opt/node_modules/aws-sdk/lib/request.js:686:14)
+    at Request.transition (/opt/node_modules/aws-sdk/lib/request.js:22:10)
+    at AcceptorStateMachine.runTo (/opt/node_modules/aws-sdk/lib/state_machine.js:14:12)
+    at /opt/node_modules/aws-sdk/lib/state_machine.js:26:10
+    at Request.<anonymous> (/opt/node_modules/aws-sdk/lib/request.js:38:9)
+    at Request.<anonymous> (/opt/node_modules/aws-sdk/lib/request.js:688:12) {
+  code: 'AccessDeniedException',
+  time: 2025-02-20T06:22:49.521Z,
+  requestId: 'a3b8ee15-bbba-4574-af37-1e9eaf311b92',
+  statusCode: 403,
+  retryable: false,
+  retryDelay: 59.871116878782196
 }
-
-// Function to send agent replies back to Instagram
-
-async function sendMessageToInstagram(senderId, messageText) {
-
-    const url = `https://graph.facebook.com/v12.0/me/messages?access_token=${PAGE_ACCESS_TOKEN}`;
-
-    const requestBody = {
-
-        recipient: { id: senderId },
-
-        message: { text: messageText }
-
-    };
-
-    try {
-
-        const response = await fetch(url, {
-
-            method: 'POST',
-
-            headers: { 'Content-Type': 'application/json' },
-
-            body: JSON.stringify(requestBody)
-
-        });
-
-        const result = await response.json();
-
-        console.log('Message sent to Instagram:', result);
-
-    } catch (error) {
-
-        console.error('Error sending message to Instagram:', error);
-
-    }
-
-} 
-
