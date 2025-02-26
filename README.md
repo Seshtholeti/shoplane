@@ -1,6 +1,74 @@
-2025-02-26T06:33:24.696Z	5131d27b-4cd9-4ab6-ba5e-18bb4db18de9	INFO	Chat started successfully: {
-  ContactId: '6f1379fd-0283-413e-a033-a0425c73e47b',
-  ParticipantId: 'ed6809a1-27a9-4daa-aed8-8d5fa53d3c9a',
-  ParticipantToken: 'QVFJREFIai85aHQ4cWtvTUxMa0hadm1TS3lKMTY4V0RPeUZMQW9EREZISDZBUUd6TWdGR3BPMm1xaThWd2VUY0tVNkRFZVhJQUFBQWJqQnNCZ2txaGtpRzl3MEJCd2FnWHpCZEFnRUFNRmdHQ1NxR1NJYjNEUUVIQVRBZUJnbGdoa2dCWlFNRUFTNHdFUVFNUXcyVUlSYXRXWnd4WndzUEFnRVFnQ3ZlQUkwL3VhZ0wxNlMxVXRRVTZOQVErS01jN0tPOFNFd05LSVRseDFPZTBzZlJrSG1hVCs4cC9PRnk6OjRLQkdDV05pb2NCRzZYZnF1VGtsS242WWh6YTRqbjVpYklUcWFSRlk4LzhNSVVDb2syMFpzaGlxMUdkUFZ4L2dOTWdtRVFHUStoVzNJVG9KRTNRR1ErbnRON0kzOS94YzlJR2grNkxiRS9vS1h3dzR5di9NRWhUZ2drWmlUMWUwemhRY1JRYTFHZXFuRVBFdU9nUmxtZERLRUlPWTFuN1J5a0pkaWZ3bEN5Ny85WDE4V1FSM1I5T3R4OXZNcXBhNWxDKzdUNmhjMEM5T0FJT0JqNnkzcUpaa1d2V1FINnFubzJKN3VyYkZUQ0FMbTFvMzJoR04=',
-  ContinuedFromContactId: null
+import fetch from 'node-fetch';
+import AWS from 'aws-sdk';
+const VERIFY_TOKEN = "token_123"; 
+const CONNECT_INSTANCE_ID = "d75ee48a-a107-44fd-a22d-3f77fc7bdd38";
+const CONNECT_CONTACT_FLOW_ID = "937c77e4-f382-4a91-b3d9-43d03b61f741";
+const REGION = "us-east-1";  
+const connect = new AWS.Connect({ region: REGION });
+export const handler = async (event) => {
+   console.log('New Event:', JSON.stringify(event, null, 2));
+   try {
+       if (event.httpMethod === "GET") {
+           const queryParams = event.queryStringParameters;
+           if (queryParams && queryParams["hub.mode"] === "subscribe" && queryParams["hub.verify_token"] === VERIFY_TOKEN) {
+               console.log("Webhook verified successfully");
+               return { statusCode: 200, body: queryParams["hub.challenge"] };
+           } else {
+               console.error("Verification failed");
+               return { statusCode: 403, body: "Forbidden" };
+           }
+       }
+       if (event.httpMethod === "POST") {
+           const body = JSON.parse(event.body);
+           if (!body.entry || body.entry.length === 0) {
+               console.error("No entry found in the event body.");
+               return { statusCode: 400, body: 'No entry found' };
+           }
+           for (const entry of body.entry) {
+               if (!entry.messaging || entry.messaging.length === 0) {
+                   console.warn("No messaging events found in the entry.");
+                   continue;
+               }
+               for (const messageEvent of entry.messaging) {
+                   const senderId = messageEvent.sender?.id;
+                   const messageText = messageEvent.message?.text;
+                   if (senderId && messageText) {
+                       console.log(`Received message from ${senderId}: ${messageText}`);
+                       await sendToAmazonConnect(senderId, messageText);
+                   } else {
+                       console.warn("Message event is missing senderId or message text.");
+                   }
+               }
+           }
+           return { statusCode: 200, body: 'EVENT_RECEIVED' };
+       }
+       return { statusCode: 404, body: 'Not Found' };
+   } catch (error) {
+       console.error("Error processing webhook:", error);
+       return { statusCode: 500, body: 'Internal Server Error' };
+   }
+};
+async function sendToAmazonConnect(senderId, messageText) {
+   try {
+       const params = {
+           InstanceId: CONNECT_INSTANCE_ID,
+           ContactFlowId: CONNECT_CONTACT_FLOW_ID,
+           Attributes: {
+               "senderId": senderId,
+               "customerMessage": messageText
+           },
+           ParticipantDetails: {
+               DisplayName: "Instagram User"
+           },
+           InitialMessage: {
+               ContentType: "text/plain",
+               Content: messageText
+           }
+       };
+       console.log("Starting chat in Amazon Connect with params:", JSON.stringify(params, null, 2));
+       const response = await connect.startChatContact(params).promise();
+       console.log("Chat started successfully:", response);
+   } catch (error) {
+       console.error("Error starting chat in Amazon Connect:", error);
+   }
 }
