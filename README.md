@@ -1,123 +1,60 @@
-import AWS from 'aws-sdk';
-import fetch from 'node-fetch';
+Status: Succeeded
+Test Event Name: test
 
-const VERIFY_TOKEN = "token_123";
-const CONNECT_INSTANCE_ID = "d75ee48a-a107-44fd-a22d-3f77fc7bdd38";
-const CONNECT_CONTACT_FLOW_ID = "937c77e4-f382-4a91-b3d9-43d03b61f741";
-const REGION = "us-east-1";
-const DYNAMODB_TABLE = "SocialChatHistory";
-
-const connect = new AWS.Connect({ region: REGION });
-const dynamoDB = new AWS.DynamoDB.DocumentClient();
-
-export const handler = async (event) => {
-    console.log('New Event:', JSON.stringify(event, null, 2));
-
-    try {
-        if (event.httpMethod === "GET") {
-            return verifyWebhook(event);
-        }
-
-        if (event.httpMethod === "POST") {
-            return await processIncomingMessage(event);
-        }
-
-        return { statusCode: 404, body: 'Not Found' };
-    } catch (error) {
-        console.error("Error processing request:", error);
-        return { statusCode: 500, body: 'Internal Server Error' };
-    }
-};
-
-// **Webhook Verification**
-function verifyWebhook(event) {
-    const queryParams = event.queryStringParameters;
-    if (queryParams && queryParams["hub.mode"] === "subscribe" && queryParams["hub.verify_token"] === VERIFY_TOKEN) {
-        console.log("Webhook verified successfully");
-        return { statusCode: 200, body: queryParams["hub.challenge"] };
-    }
-    console.error("Verification failed");
-    return { statusCode: 403, body: "Forbidden" };
+Response:
+{
+  "statusCode": 200,
+  "body": "EVENT_RECEIVED"
 }
 
-// **Process Incoming Messages**
-async function processIncomingMessage(event) {
-    const body = JSON.parse(event.body);
-
-    if (!body.entry || body.entry.length === 0) {
-        console.error("No entry found in the event body.");
-        return { statusCode: 400, body: 'No entry found' };
-    }
-
-    for (const entry of body.entry) {
-        if (!entry.messaging || entry.messaging.length === 0) {
-            console.warn("No messaging events found in the entry.");
-            continue;
-        }
-
-        for (const messageEvent of entry.messaging) {
-            const senderId = messageEvent.sender?.id;
-            const messageText = messageEvent.message?.text;
-
-            if (senderId && messageText) {
-                console.log(`Received message from ${senderId}: ${messageText}`);
-                
-                // Store message in DynamoDB
-                await storeChatHistory(senderId, messageText);
-
-                // Send message to Amazon Connect
-                await sendToAmazonConnect(senderId, messageText);
-            } else {
-                console.warn("Message event is missing senderId or message text.");
-            }
-        }
-    }
-
-    return { statusCode: 200, body: 'EVENT_RECEIVED' };
+Function Logs:
+START RequestId: 38c8ee02-d1b2-41b1-bc84-0009c7f3ec30 Version: $LATEST
+2025-03-03T11:19:22.291Z	38c8ee02-d1b2-41b1-bc84-0009c7f3ec30	INFO	New Event: {
+  "httpMethod": "POST",
+  "body": "{\"entry\":[{\"messaging\":[{\"sender\":{\"id\":\"123456\"},\"message\":{\"text\":\"Hello!\"}}]}]}"
 }
-
-// **Send to Amazon Connect**
-async function sendToAmazonConnect(senderId, messageText) {
-    try {
-        const params = {
-            InstanceId: CONNECT_INSTANCE_ID,
-            ContactFlowId: CONNECT_CONTACT_FLOW_ID,
-            Attributes: {
-                "senderId": senderId,
-                "customerMessage": messageText
-            },
-            ParticipantDetails: {
-                DisplayName: "Instagram User"
-            },
-            InitialMessage: {
-                ContentType: "text/plain",
-                Content: messageText
-            }
-        };
-
-        console.log("Starting chat in Amazon Connect with params:", JSON.stringify(params, null, 2));
-        const response = await connect.startChatContact(params).promise();
-        console.log("Chat started successfully:", response);
-    } catch (error) {
-        console.error("Error starting chat in Amazon Connect:", error);
-    }
+2025-03-03T11:19:22.291Z	38c8ee02-d1b2-41b1-bc84-0009c7f3ec30	INFO	Received message from 123456: Hello!
+2025-03-03T11:19:22.632Z	38c8ee02-d1b2-41b1-bc84-0009c7f3ec30	ERROR	Error storing chat history: ResourceNotFoundException: Requested resource not found
+    at Request.extractError (/opt/node_modules/aws-sdk/lib/protocol/json.js:80:27)
+    at Request.callListeners (/opt/node_modules/aws-sdk/lib/sequential_executor.js:106:20)
+    at Request.emit (/opt/node_modules/aws-sdk/lib/sequential_executor.js:78:10)
+    at Request.emit (/opt/node_modules/aws-sdk/lib/request.js:686:14)
+    at Request.transition (/opt/node_modules/aws-sdk/lib/request.js:22:10)
+    at AcceptorStateMachine.runTo (/opt/node_modules/aws-sdk/lib/state_machine.js:14:12)
+    at /opt/node_modules/aws-sdk/lib/state_machine.js:26:10
+    at Request.<anonymous> (/opt/node_modules/aws-sdk/lib/request.js:38:9)
+    at Request.<anonymous> (/opt/node_modules/aws-sdk/lib/request.js:688:12)
+    at Request.callListeners (/opt/node_modules/aws-sdk/lib/sequential_executor.js:116:18) {
+  code: 'ResourceNotFoundException',
+  '[__type]': 'See error.__type for details.',
+  time: 2025-03-03T11:19:22.632Z,
+  requestId: 'PB5CHS6L46COUURBTKK9JLRALNVV4KQNSO5AEMVJF66Q9ASUAAJG',
+  statusCode: 400,
+  retryable: false,
+  retryDelay: 45.41562120434054
 }
-
-// **Store Chat in DynamoDB**
-async function storeChatHistory(senderId, messageText) {
-    try {
-        const params = {
-            TableName: DYNAMODB_TABLE,
-            Item: {
-                senderId: senderId,
-                timestamp: new Date().toISOString(),
-                message: messageText
-            }
-        };
-
-        await dynamoDB.put(params).promise();
-        console.log("Chat history stored successfully.");
-    } catch (error) {
-        console.error("Error storing chat history:", error);
-    }
+2025-03-03T11:19:22.632Z	38c8ee02-d1b2-41b1-bc84-0009c7f3ec30	INFO	Starting chat in Amazon Connect with params: {
+  "InstanceId": "d75ee48a-a107-44fd-a22d-3f77fc7bdd38",
+  "ContactFlowId": "937c77e4-f382-4a91-b3d9-43d03b61f741",
+  "Attributes": {
+    "senderId": "123456",
+    "customerMessage": "Hello!"
+  },
+  "ParticipantDetails": {
+    "DisplayName": "Instagram User"
+  },
+  "InitialMessage": {
+    "ContentType": "text/plain",
+    "Content": "Hello!"
+  }
 }
+2025-03-03T11:19:23.392Z	38c8ee02-d1b2-41b1-bc84-0009c7f3ec30	INFO	Chat started successfully: {
+  ContactId: 'f213b98a-60a3-4204-bd28-6065cb210a0a',
+  ParticipantId: 'b3219aef-9c76-4315-bd42-f200e8b4371f',
+  ParticipantToken: 'QVFJREFIai85aHQ4cWtvTUxMa0hadm1TS3lKMTY4V0RPeUZMQW9EREZISDZBUUd6TWdFUjg0WW5ZaFRsc2w5c29sQ0ZrNUFXQUFBQWJqQnNCZ2txaGtpRzl3MEJCd2FnWHpCZEFnRUFNRmdHQ1NxR1NJYjNEUUVIQVRBZUJnbGdoa2dCWlFNRUFTNHdFUVFNbmR4T1VxQmZUTUl1TmVNRkFnRVFnQ3VvUWhvYVVJZXg2VFBUUTZiQ2c0NHhwRFU0VWVFa1ZFN3RWengxcU40bFFKSCsxMGlqdE9TQ1dTN0Y6OmRKM01oYUxRU2ZNWEdMZmdobHp3WVBZaTMwUXN0eVBUeVdwQ0Nva1BCQkhWYVVMWlM1M2w3RHI2QkhOdjlCK1R1Y3FyWGNpaVVYaUc5RmN2d2lrS3djQVpvK0NIWEIraGNOUnJBRTJFMzU4NlpacnpjZlNmeFdPdks5V0FWY1lWZlJCeVNzSlc0S0p3K0RMNWRlMlRqUDVqdXVTNmhqN0dZY203eGFrYUxURkNzWWtNSkZUZkZ3WTkrZUZqNGlLcTVaQkQxdVBpeWdVWUFLUGVKeGYvemJOeU9DNCt5RzNzeFVVdzRZZ1RJMGkzbStvNm0zUDQ=',
+  ContinuedFromContactId: null
+}
+END RequestId: 38c8ee02-d1b2-41b1-bc84-0009c7f3ec30
+REPORT RequestId: 38c8ee02-d1b2-41b1-bc84-0009c7f3ec30	Duration: 1575.72 ms	Billed Duration: 1576 ms	Memory Size: 128 MB	Max Memory Used: 102 MB
+
+Request ID: 38c8ee02-d1b2-41b1-bc84-0009c7f3ec30
